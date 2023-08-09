@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from datetime import date
 
-df = pd.read_csv('/Users/taibif/Documents/04-TaiCOL/tbntaxonbio-expor-6028-20220516094704-b69c6.csv')
+df = pd.read_csv('/Users/taibif/Documents/04-TaiCOL/TBN-taxa-export_20230327.csv')
 
 df = df.replace({np.nan: None})
 
@@ -44,8 +44,10 @@ Index(['taxonUUID', 'taxonRank', 'parentUUID', 'parentScientificName',
 	 * 11 phylum
 	 * 12 kingdom
 	 * 13 simple_name simplifiedScientificName
+     * 14 name_status
 	 */
 """
+df['name_status'] = 'accepted'
 
 for i in df.index:
     if i % 1000 == 0:
@@ -63,28 +65,30 @@ for i in df.index:
             rank_list += ['cultigen']
         df.loc[i, 'taxonRank'] = ','.join(rank_list)
 
-df = df[['taxonUUID','taxonUUID','scientificName','taxonUUID','taxonUUID',
-         'vernacularName','taxonRank','genus','family','order','class','phylum','kingdom','simplifiedScientificName']]
+df = df[['taxonUUID','taxonUUID','scientificName','taxonUUID','taxonUUID','vernacularName','taxonRank',
+'genus','family','order','class','phylum','kingdom','simplifiedScientificName','name_status']]
 
 today = date.today()
 today_str = today.strftime("%Y%m%d")
 
 df = df.replace({np.nan: None})
 
-df.to_csv(f'./source-data/source_tbn_{today_str}.csv', sep='\t', header=None, index=False)
+df.to_csv(f'../source-data/source_tbn_{today_str}.csv', sep='\t', header=None, index=False)
 
 
-source = pd.read_table('./source-data/sources.csv', sep='\t', header=None)
+source = pd.read_table('../../source-data/sources.csv', sep='\t', header=None)
+source = source.append({0: 'tbn'}, ignore_index=True)
+
 # id 不可動
 # name
 source.loc[source[0]=='tbn',1] = 'TBN' 
 # url_base
 source.loc[source[0]=='tbn',2] = 'https://www.tbn.org.tw/taxa/'
 # citation
-source.loc[source[0]=='tbn',3] = 'TBN：台灣生物多樣性網絡（2021）TBN首頁 https://www.tbn.org.tw/ 。瀏覽於 2022-06-07。行政院農業委員會特有生物研究保育中心。'
+source.loc[source[0]=='tbn',3] = 'TBN：台灣生物多樣性網絡（2023）TBN首頁 https://www.tbn.org.tw/ 。瀏覽於 2023-03-27。行政院農業委員會特有生物研究保育中心。'
 # url
 source.loc[source[0]=='tbn',4] = 'https://www.tbn.org.tw/'
 # version 下載檔案上的日期
-source.loc[source[0]=='tbn',5] = '2022-06-07'
+source.loc[source[0]=='tbn',5] = '2023-03-27'
 
-source.to_csv('./source-data/sources.csv', sep='\t', header=None, index=None)
+source.to_csv('../../source-data/sources.csv', sep='\t', header=None, index=None)
