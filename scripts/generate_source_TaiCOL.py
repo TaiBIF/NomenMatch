@@ -9,23 +9,31 @@ from datetime import datetime, timedelta, strftime
 import json
 import numpy as np
 
-db_settings = {'host': '127.0.0.1', 'port': 3306, 'user': 'root', 'password': 'example', 'db': 'taicol'}
+db_settings = {'host': '', 'port': '', 'user': '', 'password': '', 'db': ''}
 
 rank_map = {
     1: 'Domain', 2: 'Superkingdom', 3: 'Kingdom', 4: 'Subkingdom', 5: 'Infrakingdom', 6: 'Superdivision', 7: 'Division', 8: 'Subdivision', 9: 'Infradivision', 10: 'Parvdivision', 11: 'Superphylum', 12:
     'Phylum', 13: 'Subphylum', 14: 'Infraphylum', 15: 'Microphylum', 16: 'Parvphylum', 17: 'Superclass', 18: 'Class', 19: 'Subclass', 20: 'Infraclass', 21: 'Superorder', 22: 'Order', 23: 'Suborder',
     24: 'Infraorder', 25: 'Superfamily', 26: 'Family', 27: 'Subfamily', 28: 'Tribe', 29: 'Subtribe', 30: 'Genus', 31: 'Subgenus', 32: 'Section', 33: 'Subsection', 34: 'Species', 35: 'Subspecies', 36:
-    'Nothosubspecies', 37: 'Variety', 38: 'Subvariety', 39: 'Nothovariety', 40: 'Form', 41: 'Subform', 42: 'Special Form', 43: 'Race', 44: 'Stirp', 45: 'Morph', 46: 'Aberration', 47: 'Hybrid Formula'}
+    'Nothosubspecies', 37: 'Variety', 38: 'Subvariety', 39: 'Nothovariety', 40: 'Form', 41: 'Subform', 42: 'Special Form', 43: 'Race', 44: 'Stirp', 45: 'Morph', 46: 'Aberration', 47: 'Hybrid Formula',
+    48: 'Subrealm', 49: 'Realm'}
 
 
-query = """SELECT t.taxon_id, t.taxon_id, concat_ws(' ', tn.name, an.name_author), t.taxon_id, t.taxon_id, 
-            concat_ws(',', t.common_name_c, t.alternative_name_c), t.rank_id, att.path, tn.name, atu.status 
+
+
+
+query = """
+            WITH base_query AS (SELECT taxon_id, GROUP_CONCAT(name_c ORDER BY is_primary DESC SEPARATOR ',') AS common_name_c
+            FROM api_common_name GROUP BY taxon_id)
+            SELECT t.taxon_id, t.taxon_id, concat_ws(' ', tn.name, an.name_author), t.taxon_id, t.taxon_id, 
+            bq.common_name_c, t.rank_id, att.lin_path, tn.name, atu.status 
             FROM api_taxon_usages atu 
             JOIN api_taxon t ON atu.taxon_id = t.taxon_id
             JOIN taxon_names tn ON atu.taxon_name_id = tn.id
             JOIN api_names an ON atu.taxon_name_id = an.taxon_name_id
             LEFT JOIN api_taxon_tree att ON atu.taxon_id = att.taxon_id
-            WHERE t.is_deleted = 0
+            LEFT JOIN base_query bq ON bq.taxon_id = t.taxon_id
+            WHERE t.is_deleted != 1
         """
 
 conn = pymysql.connect(**db_settings)
@@ -109,7 +117,7 @@ df = df.replace({np.nan: None})
 
 # df.to_csv(f'source_taicol_{today_str}.csv', sep='\t', header=None, index=False)
 
-df.to_csv(f'../source-data/source_taicol_{today_str}.csv', sep='\t', header=None, index=False)
+df.to_csv(f'./source-data/source_taicol_{today_str}.csv', sep='\t', header=None, index=False)
 
 source = pd.read_table('./source-data/sources.csv', sep='\t', header=None)
 # id 不可動
