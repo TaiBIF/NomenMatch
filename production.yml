@@ -2,10 +2,11 @@ version: '3'
 
 services:
   solr:
+    container_name: nomenmatch-v2-solr
     build:
       context: ./compose/solr
       #dockerfile: ./compose/solr/Dockerfile
-    image: nomenmatch-solr:8
+    image: nomenmatch-v2-solr:8
     ports:
       - "8983:8983"
     volumes:
