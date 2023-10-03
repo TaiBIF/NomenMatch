@@ -325,6 +325,8 @@ foreach ($names as $nidx => $name) {
 
 			if ($score==1){
 				$all_matched[$matched_name]['type'].='Full match';
+			// } elseif ($score == 0 ) {
+			// 	$all_matched[$matched_name]['type']='No match';
 			} elseif ($score < 1 and $matched_name != '') {
 				$all_matched[$matched_name]['type'].='Fuzzy match';
 			}			
@@ -597,6 +599,8 @@ function render_table ($data, $time, $hardcsv=false, $next_page, $previous_page,
 					} else {
 						if (!$d[$c]) {
 							echo "<td></td>";
+						} else if ($c == 'source'){
+							echo "<td>".str_replace('taicol_2','taicol',$d[$c][0])."</td>";
 						} else {
 							echo "<td>".$d[$c][0]."</td>";
 						}
