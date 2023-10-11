@@ -147,6 +147,8 @@ Column definition:
 - class
 - phylum
 - kingdom
+- simple_name
+- name_status
 
 Describe source data
 -----
