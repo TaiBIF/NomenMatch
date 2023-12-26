@@ -28,9 +28,9 @@ services:
         - ./source-data:/code/source-data
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.whoami.rule=Host(`match.taibif.tw`)"
-      - "traefik.http.routers.whoami.entrypoints=websecure"
-      - "traefik.http.routers.whoami.tls.certresolver=myresolver"
+      - "traefik.http.routers.php.rule=Host(`match.taibif.tw`)"
+      - "traefik.http.routers.php.entrypoints=websecure"
+      - "traefik.http.routers.php.tls.certresolver=myresolver"
   traefik:
     image: "traefik:v2.10"
     container_name: "traefik"
