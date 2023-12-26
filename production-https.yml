@@ -14,23 +14,25 @@ services:
     command:
       - solr-precreate
       #- gettingstarted
-  # nginx:
-  #   image: nginx:latest
-  #   ports:
-  #       - "80:80"
-  #   volumes:
-  #       - ./:/code
-  #       - ./compose/nginx-production:/etc/nginx/conf.d
-  php:
-    image: php:7-fpm
+  nginx:
+    image: nginx:latest
+    ports:
+        - "80:80"
     volumes:
         - ./:/code
-        - ./source-data:/code/source-data
+        - ./compose/nginx-production:/etc/nginx/conf.d
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.php.rule=Host(`match.taibif.tw`)"
       - "traefik.http.routers.php.entrypoints=websecure"
       - "traefik.http.routers.php.tls.certresolver=myresolver"
+  php:
+    image: php:7-fpm
+    expose:
+      - 9000
+    volumes:
+        - ./:/code
+        - ./source-data:/code/source-data
   traefik:
     image: "traefik:v2.10"
     container_name: "traefik"
@@ -45,12 +47,10 @@ services:
       - "--certificatesresolvers.myresolver.acme.email=catalogueoflife.taiwan@gmail.com"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     ports:
-      - "80:80"
       - "443:443"
       # - "8080:8080"
     volumes:
       - "./letsencrypt:/letsencrypt"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-
 volumes:
   solr-data:
