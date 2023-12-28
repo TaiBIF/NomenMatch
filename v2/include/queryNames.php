@@ -65,7 +65,12 @@ function queryNameSingle($name, $name_cleaned, $against, $best, $ep){
 		'id');
 
 	if ($best=='yes'&&!(preg_match("/\p{Han}+/u", $name_cleaned))) { // best, 不是中文
-		$ep .= '/select?wt=json&fq=is_single_word%3Atrue&fq=-source:taicol&rows=0&q=' . rawurlencode($name_cleaned) .'~1';
+		// 如果輸入單一個英文字母
+		if (strlen($name_cleaned) == 1 ){
+			$ep .= '/select?wt=json&fq=is_single_word%3Atrue&fq=-source:taicol&rows=0&q=' . rawurlencode($name_cleaned) ;
+		} else {
+			$ep .= '/select?wt=json&fq=is_single_word%3Atrue&fq=-source:taicol&rows=0&q=' . rawurlencode($name_cleaned) .'~1';
+		}
 	} 
 	elseif ($best=='yes'&&preg_match("/\p{Han}+/u", $name_cleaned)) { // best, 是中文
 		$ep .= '/select?wt=json&rows=0&fq=-source:taicol&q=common_name_c:/(' . rawurlencode(treat_word_c($name_cleaned)) . ')/';
@@ -74,9 +79,14 @@ function queryNameSingle($name, $name_cleaned, $against, $best, $ep){
 		$ep .= '/select?wt=json&rows=0&fq=-source:taicol&q=common_name_c:/.*' . rawurlencode(treat_word_c($name_cleaned)) . '.*/';
 	}
 	elseif (!preg_match("/\p{Han}+/u", $name_cleaned)) { // 不是best, 不是中文
-		$ep .= '/select?wt=json&fq=is_single_word%3Atrue&fq=-source:taicol&rows=0&q=' . rawurlencode($name_cleaned) .'~';
-	} 
 
+		if (strlen($name_cleaned) == 1 ){
+			$ep .= '/select?wt=json&fq=is_single_word%3Atrue&fq=-source:taicol&rows=0&q=/.*' . rawurlencode($name_cleaned) . '.*/';
+		} else {
+			$ep .= '/select?wt=json&fq=is_single_word%3Atrue&fq=-source:taicol&rows=0&q=' . rawurlencode($name_cleaned) .'~';
+		}
+
+	} 
 
 	if (preg_match("/\p{Han}+/u", $name_cleaned)) {
 		extract_results($ep, '', $reset=false, $against=$against, $search_term=$name_cleaned);
