@@ -59,7 +59,7 @@ source = pd.read_table('../source-data/sources.csv', sep='\t', header=None)
 # name
 source.loc[source[0]=='col',1] = 'COL' 
 # url_base
-source.loc[source[0]=='col',2] = 'http://www.catalogueoflife.org/data/taxon/'
+source.loc[source[0]=='col',2] = 'https://www.catalogueoflife.org/data/taxon/'
 # citation
 source.loc[source[0]=='col',3] = 'Bánki, O., Roskov, Y., Döring, M., Ower, G., Vandepitte, L., Hobern, D., Remsen, D., Schalk, P., DeWalt, R. E., Keping, M., Miller, J., Orrell, T., Aalbu, R., Abbott, J., Adlard, R., Adriaenssens, E. M., Aedo, C., Aescht, E., Akkari, N., et al. (2023). Catalogue of Life Checklist (Version 2023-03-09). Catalogue of Life. https://doi.org/10.48580/dfrt'
 # url

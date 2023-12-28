@@ -427,7 +427,7 @@ function render_table ($data, $time, $hardcsv=false, $next_page, $previous_page,
 	);
 
 	echo "<head>";
-	echo "<link href='http://fonts.googleapis.com/css?family=Roboto|Slabo+27px&subset=latin,latin-ext' rel='stylesheet' type='text/css'>";
+	echo "<link href='https://fonts.googleapis.com/css?family=Roboto|Slabo+27px&subset=latin,latin-ext' rel='stylesheet' type='text/css'>";
 	echo "<script src='https://code.jquery.com/jquery-2.1.4.min.js'></script>";
 	echo "<link href='https://maxcdn.bootstrapcdn.com/bootswatch/3.3.7/cerulean/bootstrap.min.css' rel='stylesheet' integrity='sha384-zF4BRsG/fLiTGfR9QL82DrilZxrwgY/+du4p/c7J72zZj+FLYq4zY00RylP9ZjiT' crossorigin='anonymous'>";
 	echo "<script src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js' integrity='sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa' crossorigin='anonymous'></script>";

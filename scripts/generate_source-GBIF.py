@@ -41,7 +41,7 @@ source = pd.read_table('../../source-data/sources.csv', sep='\t', header=None)
 # name
 source.loc[source[0]=='gbif',1] = 'GBIF' 
 # url_base
-source.loc[source[0]=='gbif',2] = 'http://api.gbif.org/v1/species/'
+source.loc[source[0]=='gbif',2] = 'https://api.gbif.org/v1/species/'
 # citation
 source.loc[source[0]=='gbif',3] = 'GBIF Secretariat (2022). GBIF Backbone Taxonomy. Checklist dataset https://doi.org/10.15468/39omei accessed via GBIF.org on 2023-03-27.'
 # url
