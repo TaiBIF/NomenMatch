@@ -695,6 +695,7 @@ function render_csv ($data) {
 	$header = array(
 		'score',
 		'search_term',
+		'name_cleaned',
 		'matched_clean',
 		'matched',
 		'simple_name',
@@ -715,7 +716,8 @@ function render_csv ($data) {
 	$columns = $header;
 	//unset($columns[16]); // match_type
 	unset($columns[1]); // search_term
-	unset($columns[2]); // matched_clean
+	unset($columns[2]); // name_cleaned
+	unset($columns[3]); // matched_clean
 	unset($columns[0]); // score
 
 	$results = array();
@@ -735,6 +737,7 @@ function render_csv ($data) {
 					$tmp = array();
 					$tmp['score'] = $dsub['score'];
 					$tmp['search_term'] = $dsub['name'];
+					$tmp['name_cleaned'] = $dsub['name_cleaned'];
 					$tmp['matched_clean'] = $dsub['matched_clean'];
 					foreach($columns as $c){
 						if ($c == 'source'){
@@ -756,6 +759,7 @@ function render_csv ($data) {
 				$tmp = array();
 				$tmp['score'] = $dsub['score'];
 				$tmp['search_term'] = $dsub['name'];
+				$tmp['name_cleaned'] = $dsub['name_cleaned'];
 				$tmp['matched_clean'] = $dsub['matched_clean'];
 				$tmp['matched'] = '';
 				$tmp['simple_name'] = '';
@@ -818,6 +822,7 @@ function render_json ($data, $time, $best, $against, $next_page, $previous_page,
 
 			$tmp_array = array(
 				'search_term' => $dsub['name'],
+				'name_cleaned' => $dsub['name_cleaned'],
 				'matched_clean' => $dsub['matched_clean'],
 				'score' => $dsub['score']
 			);
