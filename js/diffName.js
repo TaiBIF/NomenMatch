@@ -1,15 +1,23 @@
+
+function htmlDecode(input) {
+  var doc = new DOMParser().parseFromString(input, "text/html");
+  return doc.documentElement.textContent;
+}
+
+
 $('.row_result').mouseenter(function() {
 
   if ($(this).find('.name_diff').length == 0) {
     var input_name = $(this).find("span[name_cleaned]").attr('name_cleaned');
     var td_matched = $(this).find('td')[3];
-    var matched = td_matched.innerHTML;
+    var matched = htmlDecode(td_matched.innerHTML);
     var diff = JsDiff.diffChars(input_name, matched);
     var diff_matched = document.createElement('div');
     diff_matched.setAttribute("class", "name_diff");
 
 //*
     diff.forEach(function(part){
+      // console.log(part.value)
     // green for additions, red for deletions
     // grey for common parts
       var color = part.added ? 'blue' :

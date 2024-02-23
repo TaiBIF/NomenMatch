@@ -399,7 +399,7 @@ function render_table ($data, $time, $hardcsv=false) {
 		}
 	}
 	echo "</table>\n";
-	echo "<script src='./js/diffName.js'></script>";
+	echo "<script src='./js/diffName.js?v1'></script>";
 
 	echo "</div>";
 	echo "</body>";
