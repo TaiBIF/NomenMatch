@@ -11,6 +11,7 @@ services:
       - "8983:8983"
     volumes:
       - ./solr-data:/var/solr/data
+      - ./compose/solr:/compose/solr
     command:
       - solr-precreate
       #- gettingstarted
