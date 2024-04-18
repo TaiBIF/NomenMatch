@@ -96,6 +96,7 @@ while ($vals = fgetcsv($fp, 0, "\t" )) {
 	 * 12 kingdom
 	 * 13 simple_name
 	 * 14 name_status
+	 * 15 alternative_name_c
 	 */
 
 	$rec = array();
@@ -151,7 +152,9 @@ while ($vals = fgetcsv($fp, 0, "\t" )) {
 	//if ($rec['canonical_name'] == 'Bombyx pernyi') {
 		//var_dump($rec);
 	//}
-	$rec['common_name_c'] = explode(",", $vals[5]);  
+	// $rec['common_name_c'] = explode(",", $vals[5]);  
+	$rec['common_name_c'] = $vals[5];
+	$rec['alternative_name_c'] = explode(",", $vals[15]);  
 
 	$rec['sound_name'] = treat_word($rec['canonical_name']);
 

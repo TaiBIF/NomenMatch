@@ -8,8 +8,12 @@ import pandas as pd
 from datetime import datetime, timedelta, strftime
 import json
 import numpy as np
+from scripts.utils import *
 
-db_settings = {'host': '', 'port': '', 'user': '', 'password': '', 'db': ''}
+
+var_df = pd.DataFrame(var_list, columns=['char1','char2'])
+# var2_df = pd.DataFrame(var2_list, columns=['char1','char2'])
+
 
 rank_map = {
     1: 'Domain', 2: 'Superkingdom', 3: 'Kingdom', 4: 'Subkingdom', 5: 'Infrakingdom', 6: 'Superdivision', 7: 'Division', 8: 'Subdivision', 9: 'Infradivision', 10: 'Parvdivision', 11: 'Superphylum', 12:
@@ -20,28 +24,69 @@ rank_map = {
 
 
 
-
-
 query = """
-            WITH base_query AS (SELECT taxon_id, GROUP_CONCAT(name_c ORDER BY is_primary DESC SEPARATOR ',') AS common_name_c
-            FROM api_common_name GROUP BY taxon_id)
             SELECT t.taxon_id, t.taxon_id, concat_ws(' ', tn.name, an.name_author), t.taxon_id, t.taxon_id, 
-            bq.common_name_c, t.rank_id, att.lin_path, tn.name, atu.status 
+           t.rank_id, att.lin_path, tn.name, atu.status 
             FROM api_taxon_usages atu 
             JOIN api_taxon t ON atu.taxon_id = t.taxon_id
             JOIN taxon_names tn ON atu.taxon_name_id = tn.id
             JOIN api_names an ON atu.taxon_name_id = an.taxon_name_id
             LEFT JOIN api_taxon_tree att ON atu.taxon_id = att.taxon_id
-            LEFT JOIN base_query bq ON bq.taxon_id = t.taxon_id
             WHERE t.is_deleted != 1
         """
+            # LEFT JOIN base_query bq ON bq.taxon_id = t.taxon_id
 
 conn = pymysql.connect(**db_settings)
 with conn.cursor() as cursor:
     cursor.execute(query)
     df = cursor.fetchall()
     df = pd.DataFrame(df, columns=['namecode','accepted_namecode','scientific_name','name_url_id','accepted_url_id',
-    'common_name_c', 'rank', 'path', 'simple_name', 'name_status'])
+    'rank', 'path', 'simple_name', 'name_status'])
+    cursor.execute("select taxon_id, is_primary, name_c from api_common_name;")
+    name_c_df = cursor.fetchall()
+    name_c_df = pd.DataFrame(name_c_df, columns=['taxon_id', 'is_primary','common_name_c'])
+    name_c_df = name_c_df.sort_values(by=['taxon_id','is_primary'],ascending=[True,False])
+    name_c_df = name_c_df.reset_index(drop=True)
+    name_c_df = name_c_df.groupby(['taxon_id'], as_index = False).agg({'common_name_c': ','.join})
+    name_c_df = name_c_df.rename(columns={'taxon_id': 'namecode'})
+
+
+# 把主要中文名拆出來
+name_c_df['alternative_name_c'] = name_c_df['common_name_c'].apply(lambda x: ','.join(x.split(',')[1:]) if len(x.split(',')) > 1 else '' )
+name_c_df['common_name_c'] = name_c_df['common_name_c'].apply(lambda x: x.split(',')[0] )
+
+# TODO 這邊先處理異體字
+# 只處理有 alternative_name_c 的名字
+
+c_taxon_list = name_c_df[name_c_df.alternative_name_c!=''].namecode.unique()
+
+def replace_char(string):
+    for i in var_df.index:
+        row = var_df.iloc[i]
+        string = string.replace(row.char2, row.char1)
+    # print(new_string)
+    return string
+
+c = 0
+for cc in c_taxon_list:
+    c += 1
+    if c % 100 == 0:
+        print(c)
+    row = name_c_df[name_c_df.namecode==cc].to_dict('records')[0]
+    common_name_c = row.get('common_name_c')
+    new_common_name_c = replace_char(common_name_c)
+    alternative_name_c = row.get('alternative_name_c').split(',')
+    alternative_name_c = [replace_char(a) for a in alternative_name_c if replace_char(a) != new_common_name_c]
+    alternative_name_c = list(set(alternative_name_c))
+    name_c_df.loc[name_c_df.namecode==cc, 'new_alternative_name_c'] = (',').join(alternative_name_c)
+
+
+
+
+df = df.merge(name_c_df, how='left')
+df = df.replace({np.nan: '', None: ''})
+
+
 
 
 df = df.drop_duplicates().reset_index(drop=True)
@@ -81,9 +126,6 @@ df['rank'] = df['rank'].apply(lambda x: rank_map[x])
 
 df = df.replace({np.nan: '', None: ''})
 
-
-
-
 """
 	/**
 	 * 0 namecode taxonUUID
@@ -101,12 +143,13 @@ df = df.replace({np.nan: '', None: ''})
 	 * 12 kingdom
 	 * 13 simple_name simplifiedScientificName
      * 14 name_status
+     * 15 alternative_name_c
 	 */
 """
 
 # 欄位順序
 df = df[['namecode', 'accepted_namecode', 'scientific_name', 'name_url_id', 'accepted_url_id', 'common_name_c', 
-'rank', 'genus', 'family', 'order', 'class', 'phylum', 'kingdom', 'simple_name', 'name_status']]
+'rank', 'genus', 'family', 'order', 'class', 'phylum', 'kingdom', 'simple_name', 'name_status', 'new_alternative_name_c']]
 
 today = datetime.today()
 

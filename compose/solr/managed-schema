@@ -233,14 +233,16 @@
   <!-- END moogoo -->
   <!-- BEGIN kim edited -->
   <field name="taxon_rank" type="string" indexed="true" stored="true"/>
-  <field name="common_name_c" type="string" indexed="true" stored="true" multiValued="true"/>
+  <field name="common_name_c" type="string" indexed="true" stored="true"/>
   <field name="is_single_word" type="boolean" indexed="true" stored="true"/>
   <field name="simple_name" type="string" indexed="true" stored="true"/>
   <field name="name_status" type="string" indexed="true" stored="true"/>
+  <field name="alternative_name_c" type="string" indexed="true" stored="true" multiValued="true"/>
 
   <!-- BEGIN fulltext search -->
   <copyField source="canonical_name" dest="_text_"/>
   <copyField source="common_name_c" dest="_text_"/>
+  <copyField source="alternative_name_c" dest="_text_"/>
   <!-- END fulltext search -->
 
   <!-- <field name="taibnet_url" type="string" stored="true" multiValued="false" /> -->
