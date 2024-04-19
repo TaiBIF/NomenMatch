@@ -153,7 +153,7 @@ foreach ($names as $nidx => $name) {
 
 		}
 		// kim: 根據score排序
-		arsort($scores);
+		// arsort($scores);
 
 		// 如果選best, 要顯示所有最高同分的結果
 		// 先計算有幾個best，for loop跑到該數字
@@ -315,6 +315,7 @@ foreach ($names as $nidx => $name) {
 		// kim: 比對後計算similarity
 		
 		foreach ($all_matched as $matched_name => $matched) {
+			// print_r($matched);
 			if (preg_match("/\p{Han}+/u", $name)){
 				
 				$return_score = nameSimilarityC($matched['common_name'], $name_cleaned);
@@ -425,9 +426,6 @@ foreach ($names as $nidx => $name) {
 
 		}
 
-		// kim: 根據score排序
-		arsort($scores);
-
 		if (count($total_score_array)>1){
 			$highest_score = max($total_score_array);
 		}
@@ -501,6 +499,7 @@ foreach ($names as $nidx => $name) {
 			
 			$res[$nidx][] = $all_matched[$matched_name];
 		
+			// print_r($all_matched[$matched_name]['score']);
 			if (count($all_matched[$matched_name]['score']) > 0){
 				$current_max_score = max($all_matched[$matched_name]['score']);
 
