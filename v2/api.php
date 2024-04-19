@@ -140,23 +140,16 @@ foreach ($names as $nidx => $name) {
 		//ksort($all_matched);
 		// kim: 比對後計算similarity
 		foreach ($all_matched as $matched_name => $matched) {
-			//var_dump($matched);
-			//$scores[$matched_name] = nameSimilarity($matched_name, $name_cleaned, $matched['type']);
-			
 			
 			$return_score = nameSimilarity($matched['matched_clean'], $name_cleaned, $matched['type']);
 
-			// $scores[$matched_name] = 
-		
-			// print_r($return_score); 
+			$final_score = array();
 			foreach($matched['matched'] as $mmm){
-				$final_score = array_merge($return_score, $return_score);
+				$final_score = array_merge($final_score, $return_score);
 			}
 
 			$scores[$matched_name] = $final_score;
 			$all_matched[$matched_name]['score'] = $final_score;
-
-			// $total_score_array = array_merge($total_score_array, $final_score);
 
 		}
 		// kim: 根據score排序
@@ -419,8 +412,9 @@ foreach ($names as $nidx => $name) {
 
 				$return_score = nameSimilaritySingle($matched['matched_clean'], $name_cleaned);
 
+				$final_score = array();
 				foreach($matched['matched'] as $mmm){
-					$final_score = array_merge($return_score, $return_score);
+					$final_score = array_merge($final_score, $return_score);
 				}
 
 				$scores[$matched_name] = $final_score;
@@ -434,10 +428,10 @@ foreach ($names as $nidx => $name) {
 		// kim: 根據score排序
 		arsort($scores);
 
-		$highest_score = max($total_score_array);
+		if (count($total_score_array)>1){
+			$highest_score = max($total_score_array);
+		}
 
-		
-		$test_count = 0;
 		foreach ($scores as $matched_name => $score_array) {
 
 			foreach ($score_array as $score){
@@ -507,10 +501,12 @@ foreach ($names as $nidx => $name) {
 			
 			$res[$nidx][] = $all_matched[$matched_name];
 		
-			$current_max_score = max($all_matched[$matched_name]['score']);
+			if (count($all_matched[$matched_name]['score']) > 0){
+				$current_max_score = max($all_matched[$matched_name]['score']);
 
-			if (!preg_match("/\p{Han}+/u", $matched_name) && $best == 'yes' &&  $current_max_score == $highest_score) {
-				break;
+				if (!preg_match("/\p{Han}+/u", $matched_name) && $best == 'yes' &&  $current_max_score == $highest_score) {
+					break;
+				}
 			}
 
 		}
