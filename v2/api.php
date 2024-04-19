@@ -143,9 +143,13 @@ foreach ($names as $nidx => $name) {
 			
 			$return_score = nameSimilarity($matched['matched_clean'], $name_cleaned, $matched['type']);
 
-			$final_score = array();
+			// $final_score = array();
+			// foreach($matched['matched'] as $mmm){
+			// 	$final_score = array_merge($final_score, $return_score);
+			// }
+
 			foreach($matched['matched'] as $mmm){
-				$final_score = array_merge($final_score, $return_score);
+				array_push($final_score, $return_score);
 			}
 
 			$scores[$matched_name] = $final_score;
@@ -411,11 +415,13 @@ foreach ($names as $nidx => $name) {
 
 			} else {
 
+				// echo $name_cleaned;
 				$return_score = nameSimilaritySingle($matched['matched_clean'], $name_cleaned);
 
 				$final_score = array();
+
 				foreach($matched['matched'] as $mmm){
-					$final_score = array_merge($final_score, $return_score);
+					array_push($final_score, $return_score);
 				}
 
 				$scores[$matched_name] = $final_score;
@@ -1154,7 +1160,7 @@ echo "</xmp>";
 	// echo '----';
 	// echo $penalty;
 
-	return array(round(($score - $penalty)/3.5,3));
+	return round(($score - $penalty)/3.5,3);
 }
 
 
@@ -1163,10 +1169,10 @@ echo "</xmp>";
 function nameSimilaritySingle($matched_cleaned, $name){
 	
 	if ($matched_cleaned == 'N/A' or empty($matched_cleaned)) {
-		return array(0);
+		return 0;
 	} else {
 		$penalty = levenshtein($matched_cleaned, $name) / max(strlen($matched_cleaned), strlen($name));
-		return array(round((1 - $penalty), 3));
+		return round((1 - $penalty), 3);
 	} 
 }
 
