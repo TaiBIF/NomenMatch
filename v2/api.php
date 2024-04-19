@@ -438,69 +438,98 @@ foreach ($names as $nidx => $name) {
 
 		foreach ($scores as $matched_name => $score_array) {
 
-			foreach ($score_array as $score){
-				if ($score < 0) { // kim: 最小為零
-					$score = 0;
-				}
+			// print_r($score_array);
+			// echo
+			// $cccccc = 0;
 
-				if ($score==1){
-					$all_matched[$matched_name]['type'].='Full match';
+			// // todo 目前這邊的type會有問題
+			// # START of type
 
-				
-				} elseif (preg_match("/\p{Han}+/u", $matched_name) && $score==0.95) {
-					
-					// 這邊有可能是fullmatch 但有被加權減掉分數
-					// 如果是中文的話 基本上只會有 1 / 0.95 / 0 這幾種分數
-					$all_matched[$matched_name]['type'].='Full match';
-				
-				} elseif ($score < 1 and $matched_name != '') {
+			// // 先計算每個分數代表的typ3
+			// foreach ($score_array as $score){
 
-					$all_matched[$matched_name]['type'].='Fuzzy match';
-				}			
+			// 	if ($score < 0) { // kim: 最小為零
+			// 		$score = 0;
+			// 	}
 
-				$srcMatchedAncCnt = array(); // source matched accepted name code count
-				$srcMatchedAnc = array(); // source matched accepted name code
-				$srcAnc = array(); // source accepted name code
+			// 	$type_array = array();
 
-				// 分數一樣且有多個結果
-				if (!empty($all_matched[$matched_name]['accepted_namecode'])) {
-					$ncs = $all_matched[$matched_name]['namecode'];
-					$ancs = $all_matched[$matched_name]['accepted_namecode'];
-					$srcs = $all_matched[$matched_name]['source'];
-					foreach ($srcs as $src_idx => $src) {
-						if ($ncs[$src_idx] === $ancs[$src_idx]) {
-							$srcMatchedAncCnt[$src] += 1;
-							$srcMatchedAnc[$src][] = $ancs[$src_idx];
-						}
-						else {
-							$srcMatchedAncCnt[$src] += 0;
-						}
-						$srcAnc[$src][] = $ancs[$src_idx];
+			// 	if ($score==1){
+			// 		// $all_matched[$matched_name]['type'].='Full match';
+			// 		array_push($type_array, 'Full match');
+
+			// 	} elseif (preg_match("/\p{Han}+/u", $matched_name) && $score==0.95) {
+			// 		// 這邊有可能是fullmatch 但有被加權減掉分數
+			// 		// 如果是中文的話 基本上只會有 1 / 0.95 / 0 這幾種分數
+			// 		// $all_matched[$matched_name]['type'].='Full match';
+			// 		array_push($type_array, 'Full match');
+			// 	} elseif ($score < 1 and $matched_name != '') {
+			// 		// $all_matched[$matched_name]['type'].='Fuzzy match';
+			// 		array_push($type_array, 'Fuzzy match');
+			// 	}			
+			// }
+
+			// 合併各單位的type
+
+			$srcMatchedAncCnt = array(); // source matched accepted name code count
+			$srcMatchedAnc = array(); // source matched accepted name code
+			$srcAnc = array(); // source accepted name code
+			$type_array = array(); // source accepted name code
+
+			// 分數一樣且有多個結果
+			if (!empty($all_matched[$matched_name]['accepted_namecode'])) {
+				$ncs = $all_matched[$matched_name]['namecode'];
+				$ancs = $all_matched[$matched_name]['accepted_namecode'];
+				$srcs = $all_matched[$matched_name]['source'];
+				$now_scores = $all_matched[$matched_name]['score'];
+				foreach ($srcs as $src_idx => $src) {
+					$now_score = $now_scores[$src_idx];
+					// print_r($src);
+					if ($ncs[$src_idx] === $ancs[$src_idx]) {
+						$srcMatchedAncCnt[$src] += 1;
+						$srcMatchedAnc[$src][] = $ancs[$src_idx];
+					}
+					else {
+						$srcMatchedAncCnt[$src] += 0;
 					}
 
-					$max_count = 0;
-					if (count($srcMatchedAncCnt) > 0) { 
-						$original_type = $all_matched[$matched_name]['type'];
-						$all_matched[$matched_name]['type'] = '';
-						foreach ($srcMatchedAncCnt as $src => $srcMatchedAnc_cnt) {
-							if ($srcMatchedAnc_cnt > 1) {
-								$all_matched[$matched_name]['type'] .= $original_type.'/ '."Undecidable: Multiple matched, accepted names|";
+					if ($now_score==1){
+						$type_array[$src] = 'Full match';
+					} elseif (preg_match("/\p{Han}+/u", $matched_name) && $now_score==0.95) {
+						// 這邊有可能是fullmatch 但有被加權減掉分數
+						// 如果是中文的話 基本上只會有 1 / 0.95 / 0 這幾種分數
+						$type_array[$src] = 'Full match';
+					} elseif ($now_score < 1 and $matched_name != '') {
+						$type_array[$src] = 'Fuzzy match';
+					}			
+
+					
+					$srcAnc[$src][] = $ancs[$src_idx];
+				}
+				$max_count = 0;
+				if (count($srcMatchedAncCnt) > 0) { 
+					$original_type = $type_array[$src];
+					$all_matched[$matched_name]['type'] = '';
+					foreach ($srcMatchedAncCnt as $src => $srcMatchedAnc_cnt) {
+						if ($srcMatchedAnc_cnt > 1) {
+							$all_matched[$matched_name]['type'] .= $original_type.'/ '."Undecidable: Multiple matched, accepted names|";
+							$undecide = true;
+						}
+						elseif ($srcMatchedAnc_cnt == 0) {
+							if (count(array_unique($srcAnc[$src])) > 1) {
+								$all_matched[$matched_name]['type'] .= $original_type.'/ '."Undecidable: Multiple accepted names of matched synonyms|";
 								$undecide = true;
-							}
-							elseif ($srcMatchedAnc_cnt == 0) {
-								if (count(array_unique($srcAnc[$src])) > 1) {
-									$all_matched[$matched_name]['type'] .= $original_type.'/ '."Undecidable: Multiple accepted names of matched synonyms|";
-									$undecide = true;
-								} else {
-									$all_matched[$matched_name]['type'] .= $original_type .'|';
-								}
 							} else {
 								$all_matched[$matched_name]['type'] .= $original_type .'|';
 							}
+						} else {
+							$all_matched[$matched_name]['type'] .= $original_type .'|';
 						}
 					}
-				} 
-			}
+				}
+			} 
+
+		# END of type
 
 			
 			$res[$nidx][] = $all_matched[$matched_name];
@@ -521,6 +550,7 @@ foreach ($names as $nidx => $name) {
 
 
 $etime = microtime(true);
+
 
 render($res, $format, $etime - $stime, $best, $against, $next_page, $previous_page, $names_str);
 
