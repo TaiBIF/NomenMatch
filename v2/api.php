@@ -413,8 +413,6 @@ foreach ($names as $nidx => $name) {
 
 				$return_score = nameSimilaritySingle($matched['matched_clean'], $name_cleaned);
 
-				$all_matched[$matched_name]['score'] = $return_score;
-
 				$final_score = array();
 
 				foreach($matched['matched'] as $mmm){
