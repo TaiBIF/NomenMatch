@@ -131,10 +131,6 @@ while ($vals = fgetcsv($fp, 0, "\t" )) {
 
 	$rec['taxon_rank'] = $vals[6];
 
-	// kim: 如果高階層和自己同階層就拿掉
-	if (array_key_exists(strtolower($rec['taxon_rank']), $rec)) {
-		$rec[strtolower($rec['taxon_rank'])] = null;
-	}
 
 	$rec['namecode'] = $vals[0];
 //	$rec['taibnet_url'] = "http://taibnet.sinica.edu.tw/chi/taibnet_species_detail.php?name_code=" . $vals[0];
