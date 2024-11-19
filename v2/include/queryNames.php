@@ -21,7 +21,6 @@ if (!empty($name)) {
 }
 //*/
 
-// echo treat_word_c('台灣');
 
 function sortByKeyOrder(array $sortOrderKeys, array $arrayToSort){
 	$output = [];
@@ -39,7 +38,7 @@ function sortByKeyOrder(array $sortOrderKeys, array $arrayToSort){
 // kim: 2022-04新增，比對屬以上階層，一次比對一個name
 // *** rank要限制在種以上嗎?
 // $ep = 'http://solr:8983/solr/taxa';
-function queryNameSingle($name, $name_cleaned, $against, $best, $ep, $taxon_group, $is_in_taiwan){
+function queryNameSingle($name, $name_cleaned, $against, $best, $ep, $taxon_group, $is_in_taiwan, $taxon_rank, $kingdom){
 
 	extract_results("", "", $reset=true);
 
@@ -98,6 +97,15 @@ function queryNameSingle($name, $name_cleaned, $against, $best, $ep, $taxon_grou
 		$ep .= '&fq=taxon_group:' . $taxon_group;
 	}
 
+	if ($against == 'taicol_2' && isset($taxon_rank)){
+		$taxon_ranks = explode(",",$taxon_rank);
+		$ep .= '&fq=taxon_rank:(' . urlencode(implode(' OR ', $taxon_ranks)) .')';
+	}
+
+	if ($against == 'taicol_2' && isset($kingdom)){
+		$kingdoms = explode(",",$kingdom);
+		$ep .= '&fq=kingdom:(' . urlencode(implode(' OR ', $kingdoms)) .')';
+	}
 
 	if (preg_match("/\p{Han}+/u", $name_cleaned)) {
 		extract_results($ep, '', $reset=false, $against=$against, $search_term=$name_cleaned);
@@ -129,7 +137,7 @@ function queryNameSingle($name, $name_cleaned, $against, $best, $ep, $taxon_grou
 }
 
 // kim: 以下為原始演算法，如果超過單字，優先以種&種下的方式比對 
-function queryNames ($name, $against, $best, $ep, $taxon_group, $is_in_taiwan) {
+function queryNames ($name, $against, $best, $ep, $taxon_group, $is_in_taiwan, $taxon_rank, $kingdom) {
 
 	$columns = array(
 		'matched',
@@ -154,13 +162,22 @@ function queryNames ($name, $against, $best, $ep, $taxon_group, $is_in_taiwan) {
 
 	$ep .= '/select?wt=json&q=*:*&fq=-source:taicol&sort=source%20asc'; 
 
-	// 加上is_in_taiwan & taxon_group
 	if ($against == 'taicol_2' && isset($is_in_taiwan)){
 		$ep .= '&fq=is_in_taiwan:' . $is_in_taiwan;
 	}
 
 	if ($against == 'taicol_2' && isset($taxon_group)){
 		$ep .= '&fq=taxon_group:' . $taxon_group;
+	}
+
+	if ($against == 'taicol_2' && isset($taxon_rank)){
+		$taxon_ranks = explode(",",$taxon_rank);
+		$ep .= '&fq=taxon_rank:(' . urlencode(implode(' OR ', $taxon_ranks)) .')';
+	}
+
+	if ($against == 'taicol_2' && isset($kingdom)){
+		$kingdoms = explode(",",$kingdom);
+		$ep .= '&fq=kingdom:(' . urlencode(implode(' OR ', $kingdoms)) .')';
 	}
 
 	extract_results("", "", $reset=true);

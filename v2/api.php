@@ -58,17 +58,31 @@ if (!empty($_REQUEST['best'])){
 	$best = (!empty($_POST['best']))?$_POST['best']:'yes';
 }
 
-if (!empty($_REQUEST['taxon_group'])){
-	$taxon_group = $_REQUEST['taxon_group'];
+if (!empty($_POST['taxon_group'])){
+	$taxon_group = $_POST['taxon_group'];
 } else {
 	$taxon_group = NULL;
 }
 
-if (!empty($_REQUEST['is_in_taiwan'])){
-	$is_in_taiwan = $_REQUEST['is_in_taiwan'];
+if (!empty($_POST['is_in_taiwan'])){
+	$is_in_taiwan = $_POST['is_in_taiwan'];
 } else {
 	$is_in_taiwan = NULL;
 }
+
+if (!empty($_POST['taxon_rank'])){
+	$taxon_rank = $_POST['taxon_rank'];
+} else {
+	$taxon_rank = NULL;
+}
+
+if (!empty($_POST['kingdom'])){
+	$kingdom = $_POST['kingdom'];
+} else {
+	$kingdom = NULL;
+}
+
+// print_r($taxon_rank);
 
 $ep = (!empty($_REQUEST['ep']))?$_REQUEST['ep']:file_get_contents(dirname(realpath(__FILE__)).'/conf/solr_endpoint'); // endpoint
 $ep = trim($ep, " /\r\n");
@@ -144,7 +158,7 @@ foreach ($names as $nidx => $name) {
 		//if (empty($name)) continue;
 
 		// kim: 進行比對
-		$all_matched = queryNames($name, $against, $best, $ep, $taxon_group, $is_in_taiwan);
+		$all_matched = queryNames($name, $against, $best, $ep, $taxon_group, $is_in_taiwan, $taxon_rank, $kingdom);
 			//echo '<pre>'.print_r($all_matched).'</pre>';exit();
 		//ksort($all_matched);
 		// kim: 比對後計算similarity
@@ -324,7 +338,7 @@ foreach ($names as $nidx => $name) {
 		$scores = array();
 		$total_score_array = array();
 
-		$all_matched = queryNameSingle($name, $name_cleaned, $against, $best, $ep, $taxon_group, $is_in_taiwan);
+		$all_matched = queryNameSingle($name, $name_cleaned, $against, $best, $ep, $taxon_group, $is_in_taiwan, $taxon_rank, $kingdom);
 
 		// kim: 比對後計算similarity
 		
@@ -386,7 +400,6 @@ foreach ($names as $nidx => $name) {
 							$taicol_selfs = $all_matched[$matched_name]['accepted_namecode'];
 							foreach (array_keys($taicol_parents) as $parent_key) {
 								if (in_array($taicol_parents[$parent_key], $taicol_selfs)){
-									echo $parent_key;
 									array_push($removing_array, $key);
 									unset($return_score[$key]);		
 								}
