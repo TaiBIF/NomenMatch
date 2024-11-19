@@ -58,6 +58,18 @@ if (!empty($_REQUEST['best'])){
 	$best = (!empty($_POST['best']))?$_POST['best']:'yes';
 }
 
+if (!empty($_REQUEST['taxon_group'])){
+	$taxon_group = $_REQUEST['taxon_group'];
+} else {
+	$taxon_group = NULL;
+}
+
+if (!empty($_REQUEST['is_in_taiwan'])){
+	$is_in_taiwan = $_REQUEST['is_in_taiwan'];
+} else {
+	$is_in_taiwan = NULL;
+}
+
 $ep = (!empty($_REQUEST['ep']))?$_REQUEST['ep']:file_get_contents(dirname(realpath(__FILE__)).'/conf/solr_endpoint'); // endpoint
 $ep = trim($ep, " /\r\n");
 
@@ -132,7 +144,7 @@ foreach ($names as $nidx => $name) {
 		//if (empty($name)) continue;
 
 		// kim: 進行比對
-		$all_matched = queryNames($name, $against, $best, $ep);
+		$all_matched = queryNames($name, $against, $best, $ep, $taxon_group, $is_in_taiwan);
 			//echo '<pre>'.print_r($all_matched).'</pre>';exit();
 		//ksort($all_matched);
 		// kim: 比對後計算similarity
@@ -312,7 +324,7 @@ foreach ($names as $nidx => $name) {
 		$scores = array();
 		$total_score_array = array();
 
-		$all_matched = queryNameSingle($name, $name_cleaned, $against, $best, $ep);
+		$all_matched = queryNameSingle($name, $name_cleaned, $against, $best, $ep, $taxon_group, $is_in_taiwan);
 
 		// kim: 比對後計算similarity
 		
@@ -356,37 +368,56 @@ foreach ($names as $nidx => $name) {
 						}
 					}
 
-					// 如果有多個最高同分結果 要優先給予種階層
+					// 如果有多個最高同分結果
+					// 2024-11 改成優先給最下階層
+					// 用parent_taxon_id判斷是不是上下階層
+					// 先找出所有人的上階層 
+					// 如果有人的上階層是accepted_namecode 移除該accepted_namecode
+					// 只考慮source為TaiCOL的情況
+					// 只會在中文的單字查詢
+
 
 					if (count($return_score) > 1) {
-						
-						// 應該先確定有沒有存在species階層 且同時有其他種下階層
 
-						if (in_array('species', $all_matched[$matched_name]['taxon_rank'])){
-
-							$removing_array = array();
-							$sub_array = array ('subspecies',
-												'nothosubspecies',
-												'variety',
-												'subvariety',
-												'nothovariety',
-												'form',
-												'subform',
-												'special-form',
-												'race',
-												'stirp',
-												'morph',
-												'aberration',
-												'hybrid-formula');
-
-							foreach( array_keys($all_matched[$matched_name]['taxon_rank']) as $key ) {
-
-								if (in_array($all_matched[$matched_name]['taxon_rank'][$key],$sub_array)) {
+						$taicol_more_than_1 = filterBySource($all_matched, 'taicol_2');
+						$removing_array = array();
+						if (count($taicol_more_than_1[$matched_name]) > 1){
+							$taicol_parents = $all_matched[$matched_name]['parent_taxon_id'];
+							$taicol_selfs = $all_matched[$matched_name]['accepted_namecode'];
+							foreach (array_keys($taicol_parents) as $parent_key) {
+								if (in_array($taicol_parents[$parent_key], $taicol_selfs)){
+									echo $parent_key;
 									array_push($removing_array, $key);
 									unset($return_score[$key]);		
 								}
-
 							}
+						}
+						
+						// if (in_array('species', $all_matched[$matched_name]['taxon_rank'])){
+
+							// $removing_array = array();
+							// $sub_array = array ('subspecies',
+							// 					'nothosubspecies',
+							// 					'variety',
+							// 					'subvariety',
+							// 					'nothovariety',
+							// 					'form',
+							// 					'subform',
+							// 					'special-form',
+							// 					'race',
+							// 					'stirp',
+							// 					'morph',
+							// 					'aberration',
+							// 					'hybrid-formula');
+
+							// foreach (array_keys($all_matched[$matched_name]['taxon_rank']) as $key) {
+
+							// 	if (in_array($all_matched[$matched_name]['taxon_rank'][$key], $sub_array)) {
+							// 		array_push($removing_array, $key);
+							// 		unset($return_score[$key]);		
+							// 	}
+
+							// }
 
 							if (count($removing_array) > 0){
 								foreach ($return_keys as $rk) {
@@ -401,7 +432,7 @@ foreach ($names as $nidx => $name) {
 									}
 								}
 							}
-						}
+						// }
 					}
 
 				}
@@ -1253,6 +1284,35 @@ function array_sort_by_column(&$arr, $col, $dir = SORT_STRING) {
     }
 
     array_multisort($sort_col, $dir, $arr);
+}
+
+
+function filterBySource($data, $targetSource) {
+    $result = [];
+
+    foreach ($data as $key => $item) {
+        if (isset($item['source'])) {
+            // 找出 source 中符合條件的索引
+            $matchedIndexes = array_keys($item['source'], $targetSource);
+
+            if (!empty($matchedIndexes)) {
+                // 初始化結果
+                $result[$key] = [];
+
+                foreach ($item as $field => $values) {
+                    if (is_array($values)) {
+                        // 根據索引篩選
+                        $result[$key][$field] = array_intersect_key($values, array_flip($matchedIndexes));
+                    } else {
+                        // 非陣列欄位直接保留
+                        $result[$key][$field] = $values;
+                    }
+                }
+            }
+        }
+    }
+
+    return $result;
 }
 
 

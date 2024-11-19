@@ -97,6 +97,9 @@ while ($vals = fgetcsv($fp, 0, "\t" )) {
 	 * 13 simple_name
 	 * 14 name_status
 	 * 15 alternative_name_c
+	 * 16 taxon_group (物種類群)
+     * 17 is_in_taiwan
+     * 18 parent_taxon_id
 	 */
 
 	$rec = array();
@@ -140,6 +143,14 @@ while ($vals = fgetcsv($fp, 0, "\t" )) {
 	}
 	else {
 		$rec['accepted_namecode'] = $vals[1];
+	}
+
+	if ($source == 'taicol_2'){
+
+		$rec['taxon_group'] = $vals[16];
+		$rec['is_in_taiwan'] = $vals[17];
+		$rec['parent_taxon_id'] = $vals[18];
+
 	}
 	
 	// $rec['accepted_namecode'] = $vals[1];

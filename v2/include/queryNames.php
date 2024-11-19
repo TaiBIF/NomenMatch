@@ -39,9 +39,10 @@ function sortByKeyOrder(array $sortOrderKeys, array $arrayToSort){
 // kim: 2022-04新增，比對屬以上階層，一次比對一個name
 // *** rank要限制在種以上嗎?
 // $ep = 'http://solr:8983/solr/taxa';
-function queryNameSingle($name, $name_cleaned, $against, $best, $ep){
+function queryNameSingle($name, $name_cleaned, $against, $best, $ep, $taxon_group, $is_in_taiwan){
 
 	extract_results("", "", $reset=true);
+
 
 	// kim: 搜尋 canonical_name or common_name_c
 	// $name_cleaned = canonical_form($name, true);
@@ -62,6 +63,7 @@ function queryNameSingle($name, $name_cleaned, $against, $best, $ep){
 		'genus',
 		'taxon_rank',
 		'simple_name',
+		'parent_taxon_id',
 		'id');
 
 	if ($best=='yes'&&!(preg_match("/\p{Han}+/u", $name_cleaned))) { // best, 不是中文
@@ -85,6 +87,17 @@ function queryNameSingle($name, $name_cleaned, $against, $best, $ep){
 			$ep .= '/select?wt=json&fq=is_single_word%3Atrue&fq=-source:taicol&rows=0&q=' . rawurlencode($name_cleaned) .'~';
 		}
 	} 
+
+
+	// 加上is_in_taiwan & taxon_group
+	if ($against == 'taicol_2' && isset($is_in_taiwan)){
+		$ep .= '&fq=is_in_taiwan:' . $is_in_taiwan;
+	}
+
+	if ($against == 'taicol_2' && isset($taxon_group)){
+		$ep .= '&fq=taxon_group:' . $taxon_group;
+	}
+
 
 	if (preg_match("/\p{Han}+/u", $name_cleaned)) {
 		extract_results($ep, '', $reset=false, $against=$against, $search_term=$name_cleaned);
@@ -116,7 +129,7 @@ function queryNameSingle($name, $name_cleaned, $against, $best, $ep){
 }
 
 // kim: 以下為原始演算法，如果超過單字，優先以種&種下的方式比對 
-function queryNames ($name, $against, $best, $ep) {
+function queryNames ($name, $against, $best, $ep, $taxon_group, $is_in_taiwan) {
 
 	$columns = array(
 		'matched',
@@ -140,6 +153,15 @@ function queryNames ($name, $against, $best, $ep) {
 	if (empty($ep)) return false;
 
 	$ep .= '/select?wt=json&q=*:*&fq=-source:taicol&sort=source%20asc'; 
+
+	// 加上is_in_taiwan & taxon_group
+	if ($against == 'taicol_2' && isset($is_in_taiwan)){
+		$ep .= '&fq=is_in_taiwan:' . $is_in_taiwan;
+	}
+
+	if ($against == 'taicol_2' && isset($taxon_group)){
+		$ep .= '&fq=taxon_group:' . $taxon_group;
+	}
 
 	extract_results("", "", $reset=true);
 	// mix2; work with latin part b2, c2, and suggestions of latin part b2, c2
@@ -467,6 +489,7 @@ function extract_results ($query_url="", $msg="", $reset=false, $against="", $se
 					'taxon_rank' => array((isset($doc->taxon_rank) ? strtolower(@$doc -> taxon_rank) : '')),
 					'type' => $msg,
 					'simple_name' => array((isset($doc->simple_name) ? @$doc -> simple_name : '')),
+					'parent_taxon_id' => array((isset($doc->parent_taxon_id) ? @$doc -> parent_taxon_id : '')),
 					'id' => array((isset($doc->id) ? @$doc -> id : '')),
 				);
 			} else {
@@ -481,11 +504,6 @@ function extract_results ($query_url="", $msg="", $reset=false, $against="", $se
 					$cc = '';	
 				}
 
-				// if (isset($cc)){
-				// 	$cc = implode(",", $cc);
-				// } else {
-				// 	$cc = '';
-				// }
 				// 這邊如果有一樣的namecode會被拿掉
 				if (!in_array(@$doc->id, $all_matched[$merged_term]['id'])) {
 					$all_matched[$merged_term]['namecode'][] = (isset($doc->namecode) ? @$doc -> namecode : '');
@@ -504,6 +522,7 @@ function extract_results ($query_url="", $msg="", $reset=false, $against="", $se
 					$all_matched[$merged_term]['genus'][] = (isset($doc->genus) ? @$doc -> genus : '');
 					$all_matched[$merged_term]['taxon_rank'][] = (isset($doc->taxon_rank) ? strtolower(@$doc -> taxon_rank) : '');
 					$all_matched[$merged_term]['simple_name'][] = (isset($doc->simple_name) ? @$doc -> simple_name : '');
+					$all_matched[$merged_term]['parent_taxon_id'][] = (isset($doc->parent_taxon_id) ? @$doc -> parent_taxon_id : '');
 					$all_matched[$merged_term]['id'][] = (isset($doc->id) ? @$doc -> id : '');
 				}
 			}
@@ -531,6 +550,7 @@ function extract_results ($query_url="", $msg="", $reset=false, $against="", $se
 			'taxon_rank' => array(),
 			'type' => 'No match',
 			'simple_name' => array(),
+			'parent_taxon_id' => array(),
 			'id' => array(),
 		);
 	}
