@@ -87,6 +87,7 @@ function queryNameSingle($name, $name_cleaned, $against, $best, $ep, $taxon_grou
 		}
 	} 
 
+	// echo '$against:' . $against ;
 
 	// 加上is_in_taiwan & taxon_group
 	if ($against == 'taicol_2' && isset($is_in_taiwan)){
@@ -94,7 +95,7 @@ function queryNameSingle($name, $name_cleaned, $against, $best, $ep, $taxon_grou
 	}
 
 	if ($against == 'taicol_2' && isset($taxon_group)){
-		$ep .= '&fq=taxon_group:' . $taxon_group;
+		$ep .= '&fq=taxon_group:' . rawurlencode($taxon_group);
 	}
 
 	if ($against == 'taicol_2' && isset($taxon_rank)){
@@ -167,7 +168,7 @@ function queryNames ($name, $against, $best, $ep, $taxon_group, $is_in_taiwan, $
 	}
 
 	if ($against == 'taicol_2' && isset($taxon_group)){
-		$ep .= '&fq=taxon_group:' . $taxon_group;
+		$ep .= '&fq=taxon_group:' . rawurlencode($taxon_group);
 	}
 
 	if ($against == 'taicol_2' && isset($taxon_rank)){
@@ -442,6 +443,7 @@ function extract_results ($query_url="", $msg="", $reset=false, $against="", $se
 			$rows = 100; // 每次回傳 100 rows
 			$offset = 0;
 			$current_url_root = str_replace('rows=0', 'rows=100' ,$query_url);
+
 			for($i=0 ;  $offset < $numFound ; $i++){
 				$offset = $rows*$i;
 				$current_url = $current_url_root . '&start=' . $offset;

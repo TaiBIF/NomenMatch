@@ -50,39 +50,37 @@ if ($against=='taicol'){
 	$against = 'taicol_2';
 }
 
-
-// $best = (!empty($_REQUEST['best']))?$_REQUEST['best']:'yes';
 if (!empty($_REQUEST['best'])){
 	$best = $_REQUEST['best'];
 } else {
 	$best = (!empty($_POST['best']))?$_POST['best']:'yes';
 }
 
-if (!empty($_POST['taxon_group'])){
-	$taxon_group = $_POST['taxon_group'];
+if (!empty($_REQUEST['taxon_group'])){
+	$taxon_group = $_REQUEST['taxon_group'];
 } else {
-	$taxon_group = NULL;
+	$taxon_group = (!empty($_POST['taxon_group']))?$_POST['taxon_group']:NULL;
 }
 
-if (!empty($_POST['is_in_taiwan'])){
-	$is_in_taiwan = $_POST['is_in_taiwan'];
+if (!empty($_REQUEST['is_in_taiwan'])){
+	$is_in_taiwan = $_REQUEST['is_in_taiwan'];
 } else {
-	$is_in_taiwan = NULL;
+	$is_in_taiwan = (!empty($_POST['is_in_taiwan']))?$_POST['is_in_taiwan']:NULL;
 }
 
-if (!empty($_POST['taxon_rank'])){
-	$taxon_rank = $_POST['taxon_rank'];
+if (!empty($_REQUEST['taxon_rank'])){
+	$taxon_rank = $_REQUEST['taxon_rank'];
 } else {
-	$taxon_rank = NULL;
+	$taxon_rank = (!empty($_POST['taxon_rank']))?$_POST['taxon_rank']:NULL;
 }
 
-if (!empty($_POST['kingdom'])){
-	$kingdom = $_POST['kingdom'];
+if (!empty($_REQUEST['kingdom'])){
+	$kingdom = $_REQUEST['kingdom'];
 } else {
-	$kingdom = NULL;
+	$kingdom = (!empty($_POST['kingdom']))?$_POST['kingdom']:NULL;
 }
 
-// print_r($taxon_rank);
+
 
 $ep = (!empty($_REQUEST['ep']))?$_REQUEST['ep']:file_get_contents(dirname(realpath(__FILE__)).'/conf/solr_endpoint'); // endpoint
 $ep = trim($ep, " /\r\n");
