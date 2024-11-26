@@ -388,18 +388,21 @@ foreach ($names as $nidx => $name) {
 					// 只考慮source為TaiCOL的情況
 					// 只會在中文的單字查詢
 
-
 					if (count($return_score) > 1) {
 
 						$taicol_more_than_1 = filterBySource($all_matched, 'taicol_2');
 						$removing_array = array();
+
 						if (count($taicol_more_than_1[$matched_name]) > 1){
 							$taicol_parents = $all_matched[$matched_name]['parent_taxon_id'];
 							$taicol_selfs = $all_matched[$matched_name]['accepted_namecode'];
+
 							foreach (array_keys($taicol_parents) as $parent_key) {
+								// 如果有人的parent 是比對到的結果 移除掉parent
 								if (in_array($taicol_parents[$parent_key], $taicol_selfs)){
-									array_push($removing_array, $key);
-									unset($return_score[$key]);		
+									$removing_key = array_search($taicol_parents[$parent_key], $taicol_selfs);
+									array_push($removing_array, $removing_key);
+									unset($return_score[$removing_key]);
 								}
 							}
 						}
