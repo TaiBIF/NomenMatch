@@ -38,7 +38,7 @@ function sortByKeyOrder(array $sortOrderKeys, array $arrayToSort){
 // kim: 2022-04新增，比對屬以上階層，一次比對一個name
 // *** rank要限制在種以上嗎?
 // $ep = 'http://solr:8983/solr/taxa';
-function queryNameSingle($name, $name_cleaned, $against, $best, $ep, $taxon_group, $is_in_taiwan, $taxon_rank, $kingdom){
+function queryNameSingle($name, $name_cleaned, $against, $best, $ep, $bio_group, $is_in_taiwan, $taxon_rank, $kingdom){
 
 	extract_results("", "", $reset=true);
 
@@ -89,13 +89,13 @@ function queryNameSingle($name, $name_cleaned, $against, $best, $ep, $taxon_grou
 
 	// echo '$against:' . $against ;
 
-	// 加上is_in_taiwan & taxon_group
+	// 加上is_in_taiwan & bio_group
 	if ($against == 'taicol_2' && isset($is_in_taiwan)){
 		$ep .= '&fq=is_in_taiwan:' . $is_in_taiwan;
 	}
 
-	if ($against == 'taicol_2' && isset($taxon_group)){
-		$ep .= '&fq=taxon_group:' . rawurlencode($taxon_group);
+	if ($against == 'taicol_2' && isset($bio_group)){
+		$ep .= '&fq=bio_group:' . rawurlencode($bio_group);
 	}
 
 	if ($against == 'taicol_2' && isset($taxon_rank)){
@@ -138,7 +138,7 @@ function queryNameSingle($name, $name_cleaned, $against, $best, $ep, $taxon_grou
 }
 
 // kim: 以下為原始演算法，如果超過單字，優先以種&種下的方式比對 
-function queryNames ($name, $against, $best, $ep, $taxon_group, $is_in_taiwan, $taxon_rank, $kingdom) {
+function queryNames ($name, $against, $best, $ep, $bio_group, $is_in_taiwan, $taxon_rank, $kingdom) {
 
 	$columns = array(
 		'matched',
@@ -167,8 +167,8 @@ function queryNames ($name, $against, $best, $ep, $taxon_group, $is_in_taiwan, $
 		$ep .= '&fq=is_in_taiwan:' . $is_in_taiwan;
 	}
 
-	if ($against == 'taicol_2' && isset($taxon_group)){
-		$ep .= '&fq=taxon_group:' . rawurlencode($taxon_group);
+	if ($against == 'taicol_2' && isset($bio_group)){
+		$ep .= '&fq=bio_group:' . rawurlencode($bio_group);
 	}
 
 	if ($against == 'taicol_2' && isset($taxon_rank)){

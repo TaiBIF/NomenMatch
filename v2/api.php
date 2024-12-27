@@ -56,10 +56,10 @@ if (!empty($_REQUEST['best'])){
 	$best = (!empty($_POST['best']))?$_POST['best']:'yes';
 }
 
-if (!empty($_REQUEST['taxon_group'])){
-	$taxon_group = $_REQUEST['taxon_group'];
+if (!empty($_REQUEST['bio_group'])){
+	$bio_group = $_REQUEST['bio_group'];
 } else {
-	$taxon_group = (!empty($_POST['taxon_group']))?$_POST['taxon_group']:NULL;
+	$bio_group = (!empty($_POST['bio_group']))?$_POST['bio_group']:NULL;
 }
 
 if (!empty($_REQUEST['is_in_taiwan'])){
@@ -156,7 +156,7 @@ foreach ($names as $nidx => $name) {
 		//if (empty($name)) continue;
 
 		// kim: 進行比對
-		$all_matched = queryNames($name, $against, $best, $ep, $taxon_group, $is_in_taiwan, $taxon_rank, $kingdom);
+		$all_matched = queryNames($name, $against, $best, $ep, $bio_group, $is_in_taiwan, $taxon_rank, $kingdom);
 			//echo '<pre>'.print_r($all_matched).'</pre>';exit();
 		//ksort($all_matched);
 		// kim: 比對後計算similarity
@@ -336,7 +336,7 @@ foreach ($names as $nidx => $name) {
 		$scores = array();
 		$total_score_array = array();
 
-		$all_matched = queryNameSingle($name, $name_cleaned, $against, $best, $ep, $taxon_group, $is_in_taiwan, $taxon_rank, $kingdom);
+		$all_matched = queryNameSingle($name, $name_cleaned, $against, $best, $ep, $bio_group, $is_in_taiwan, $taxon_rank, $kingdom);
 
 		// kim: 比對後計算similarity
 		

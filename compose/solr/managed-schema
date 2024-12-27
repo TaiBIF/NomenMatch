@@ -241,7 +241,7 @@
   
   <!-- 202411 查詢設定調整 -->
   <field name="is_in_taiwan" type="boolean" indexed="true" stored="true"/>
-  <field name="taxon_group" type="string" indexed="true" stored="true"/>
+  <field name="bio_group" type="string" indexed="true" stored="true"/>
   <field name="parent_taxon_id" type="string" indexed="true" stored="true"/>
 
   <!-- BEGIN fulltext search -->
