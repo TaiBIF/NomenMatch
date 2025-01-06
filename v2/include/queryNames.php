@@ -94,8 +94,15 @@ function queryNameSingle($name, $name_cleaned, $against, $best, $ep, $bio_group,
 		$ep .= '&fq=is_in_taiwan:' . $is_in_taiwan;
 	}
 
+	// 如果是維管束植物要加上蕨類
 	if ($against == 'taicol_2' && isset($bio_group)){
-		$ep .= '&fq=bio_group:' . rawurlencode($bio_group);
+
+		if ($bio_group=='維管束植物'){
+			$ep .= '&fq=bio_group:' . rawurlencode('(' . $bio_group. ' OR '. '蕨類植物'. ')') ;
+		}
+		else {
+			$ep .= '&fq=bio_group:' . rawurlencode($bio_group);
+		}		
 	}
 
 	if ($against == 'taicol_2' && isset($taxon_rank)){
@@ -115,6 +122,8 @@ function queryNameSingle($name, $name_cleaned, $against, $best, $ep, $bio_group,
 	}
 
 	$all_matched_tmp = extract_results();
+
+	// print_r($all_matched_tmp);
 	
 	if (!$all_matched_tmp['']['type']=='No match'){
 		foreach ($all_matched_tmp as $m) {
@@ -167,9 +176,21 @@ function queryNames ($name, $against, $best, $ep, $bio_group, $is_in_taiwan, $ta
 		$ep .= '&fq=is_in_taiwan:' . $is_in_taiwan;
 	}
 
+	// 如果是維管束植物要加上蕨類
 	if ($against == 'taicol_2' && isset($bio_group)){
-		$ep .= '&fq=bio_group:' . rawurlencode($bio_group);
+
+		if ($bio_group=='維管束植物'){
+			$ep .= '&fq=bio_group:' . rawurlencode('(' . $bio_group. ' OR '. '蕨類植物'. ')') ;
+		}
+		else {
+			$ep .= '&fq=bio_group:' . rawurlencode($bio_group);
+		}		
+
 	}
+
+	echo $ep ;
+
+	
 
 	if ($against == 'taicol_2' && isset($taxon_rank)){
 		$taxon_ranks = explode(",",$taxon_rank);
@@ -418,6 +439,8 @@ function extract_results ($query_url="", $msg="", $reset=false, $against="", $se
 		$all_matched = array();
 		$query_urls = array();
 	}
+
+
 	if (empty($query_url)&&!$reset) {
 		return $all_matched;
 	}
@@ -432,10 +455,15 @@ function extract_results ($query_url="", $msg="", $reset=false, $against="", $se
 		if (@$query_urls[$query_url]) {
 			return;
 		}
+
 		$query_urls[$query_url] = true;
 
 		$first_query = @json_decode(@file_get_contents($query_url));
+
 		$numFound = $first_query->response->numFound;
+
+		// echo 'he';
+
 		// $maxScore = $first_query->response->maxScore;
 
 		if ($numFound > 0){
