@@ -188,10 +188,6 @@ function queryNames ($name, $against, $best, $ep, $bio_group, $is_in_taiwan, $ta
 
 	}
 
-	echo $ep ;
-
-	
-
 	if ($against == 'taicol_2' && isset($taxon_rank)){
 		$taxon_ranks = explode(",",$taxon_rank);
 		$ep .= '&fq=taxon_rank:(' . urlencode(implode(' OR ', $taxon_ranks)) .')';
