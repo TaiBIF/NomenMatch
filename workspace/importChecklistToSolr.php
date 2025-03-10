@@ -96,10 +96,14 @@ while ($vals = fgetcsv($fp, 0, "\t" )) {
 	 * 12 kingdom
 	 * 13 simple_name
 	 * 14 name_status
+	 * 15 alternative_name_c
+	 * 16 bio_group (物種類群)
+     * 17 is_in_taiwan
+     * 18 parent_taxon_id
 	 */
 
 	$rec = array();
-	// $rec['id'] = $source . '-' . $vals[0];
+	//$rec['id'] = $source . '-' . $vals[0];
 	$rec['source'] = $source;
 
 	$rec['url_id'] = $vals[3];
@@ -130,10 +134,6 @@ while ($vals = fgetcsv($fp, 0, "\t" )) {
 
 	$rec['taxon_rank'] = $vals[6];
 
-	// kim: 如果高階層和自己同階層就拿掉
-	if (array_key_exists(strtolower($rec['taxon_rank']), $rec)) {
-		$rec[strtolower($rec['taxon_rank'])] = null;
-	}
 
 	$rec['namecode'] = $vals[0];
 //	$rec['taibnet_url'] = "http://taibnet.sinica.edu.tw/chi/taibnet_species_detail.php?name_code=" . $vals[0];
@@ -144,6 +144,14 @@ while ($vals = fgetcsv($fp, 0, "\t" )) {
 	else {
 		$rec['accepted_namecode'] = $vals[1];
 	}
+
+	if ($source == 'taicol'){
+
+		$rec['bio_group'] = $vals[16];
+		$rec['is_in_taiwan'] = $vals[17];
+		$rec['parent_taxon_id'] = $vals[18];
+
+	}
 	
 	// $rec['accepted_namecode'] = $vals[1];
 	$rec['original_name'] = $vals[2];
@@ -151,7 +159,9 @@ while ($vals = fgetcsv($fp, 0, "\t" )) {
 	//if ($rec['canonical_name'] == 'Bombyx pernyi') {
 		//var_dump($rec);
 	//}
-	$rec['common_name_c'] = explode(",", $vals[5]);  
+	// $rec['common_name_c'] = explode(",", $vals[5]);  
+	$rec['common_name_c'] = $vals[5];
+	$rec['alternative_name_c'] = explode(",", $vals[15]);  
 
 	$rec['sound_name'] = treat_word($rec['canonical_name']);
 

@@ -46,12 +46,41 @@ if (!empty($_REQUEST['source'])){
 	$against = (!empty($_POST['source']))?$_POST['source']:'';
 }
 
-// $best = (!empty($_REQUEST['best']))?$_REQUEST['best']:'yes';
+// if ($against=='taicol'){
+// 	$against = 'taicol';
+// }
+
 if (!empty($_REQUEST['best'])){
 	$best = $_REQUEST['best'];
 } else {
 	$best = (!empty($_POST['best']))?$_POST['best']:'yes';
 }
+
+if (!empty($_REQUEST['bio_group'])){
+	$bio_group = $_REQUEST['bio_group'];
+} else {
+	$bio_group = (!empty($_POST['bio_group']))?$_POST['bio_group']:NULL;
+}
+
+if (!empty($_REQUEST['is_in_taiwan'])){
+	$is_in_taiwan = $_REQUEST['is_in_taiwan'];
+} else {
+	$is_in_taiwan = (!empty($_POST['is_in_taiwan']))?$_POST['is_in_taiwan']:NULL;
+}
+
+if (!empty($_REQUEST['taxon_rank'])){
+	$taxon_rank = $_REQUEST['taxon_rank'];
+} else {
+	$taxon_rank = (!empty($_POST['taxon_rank']))?$_POST['taxon_rank']:NULL;
+}
+
+if (!empty($_REQUEST['kingdom'])){
+	$kingdom = $_REQUEST['kingdom'];
+} else {
+	$kingdom = (!empty($_POST['kingdom']))?$_POST['kingdom']:NULL;
+}
+
+
 
 $ep = (!empty($_REQUEST['ep']))?$_REQUEST['ep']:file_get_contents(dirname(realpath(__FILE__)).'/conf/solr_endpoint'); // endpoint
 $ep = trim($ep, " /\r\n");
@@ -110,7 +139,7 @@ foreach ($names as $nidx => $name) {
 	}
 
 	// 如果可用空白鍵拆成array，則維持以原先的演算法match
-	if (count(explode(" ", $name_cleaned)) > 1) {		
+	if (count(explode(" ", $name_cleaned)) > 1 && !(preg_match("/\p{Han}+/u", $name_cleaned))) {	
 	/*
 		for ($i=0; $i<strlen($name); $i++) {
 			echo $name[$i].",".ord($name[$i]).",";
@@ -126,13 +155,11 @@ foreach ($names as $nidx => $name) {
 		//if (empty($name)) continue;
 
 		// kim: 進行比對
-		$all_matched = queryNames($name, $against, $best, $ep);
+		$all_matched = queryNames($name, $against, $best, $ep, $bio_group, $is_in_taiwan, $taxon_rank, $kingdom);
 			//echo '<pre>'.print_r($all_matched).'</pre>';exit();
 		//ksort($all_matched);
 		// kim: 比對後計算similarity
 		foreach ($all_matched as $matched_name => $matched) {
-			//var_dump($matched);
-			//$scores[$matched_name] = nameSimilarity($matched_name, $name_cleaned, $matched['type']);
 			$scores[$matched_name] = nameSimilarity($matched['matched_clean'], $name_cleaned, $matched['type']);
 		}
 		// kim: 根據score排序
@@ -143,197 +170,331 @@ foreach ($names as $nidx => $name) {
 		$arr1 = array();
 		foreach($scores as $k=>$score)
 		{
-			$arr1[$k]    = (string) $score;
+			$arr1[$k] = (string) $score;
 		}
 		$score_vals = array_count_values($arr1);
 		$num_highest_score = current($score_vals);
 		$current_index = 0;
 
 		foreach ($scores as $matched_name => $score) {
-			if ($score < 0) { // kim: 最小為零
-				$score = 0;
-			}
-			if ($best == 'yes') {
-				$matched_only = array_keys($scores); // 名字拆成array
-				$scores_only = array_values($scores);
-				$score0 = $scores_only[0]; // kim: 最高分
-				if (count($scores) > 1) {
-					$moreThan1 = true;
-					$score1 = $scores_only[1]; // kim: 第二高分
-					//var_dump(array($score0, $score1));
-					if (round($score0/3.5,3) == round($score1/3.5,3)) { // kim: 如果同分的話代表無法決定
-						$undecide = true;
+			// foreach ($score_array as $score){
+				if ($score < 0) { // kim: 最小為零
+					$score = 0;
+				}
+				if ($best == 'yes') {
+					$matched_only = array_keys($scores); // 名字拆成array
+					$scores_only = array_values($scores);
+					$score0 = $scores_only[0]; // kim: 最高分
+					if (count($scores) > 1) {
+						$moreThan1 = true;
+						$score1 = $scores_only[1]; // kim: 第二高分
+						//var_dump(array($score0, $score1));
+						if (round($score0/3.5,3) == round($score1/3.5,3)) { // kim: 如果同分的話代表無法決定
+							$undecide = true;
+						}
+						//var_dump($undecide);
 					}
-					//var_dump($undecide);
-				}
-				else {
-					$onlyOne = true;
-				}
+					else {
+						$onlyOne = true;
+					}
 
-				if ($undecide || $onlyOne) {
-					$comb = array();
-					$comb_string = array();
-					foreach ($matched_only as $m_idx => $mo) {
-						$comb_dmin = 999;
-						$comb[$m_idx] = array('[whatever]','[whatever]','[whatever]');
-						$comb_string[$m_idx] = "";
-						$comb_common = array();
+					if ($undecide || $onlyOne) {
+						$comb = array();
+						$comb_string = array();
+						foreach ($matched_only as $m_idx => $mo) {
+							$comb_dmin = 999;
+							$comb[$m_idx] = array('[whatever]','[whatever]','[whatever]');
+							$comb_string[$m_idx] = "";
+							$comb_common = array();
 
-						// matched name 和 search term
-						$parts1 = explode(" ", canonical_form($mo, true));
-						$parts2 = explode(" ", $name_cleaned);
+							// matched name 和 search term
+							$parts1 = explode(" ", canonical_form($mo, true));
+							$parts2 = explode(" ", $name_cleaned);
 
-						// 種小名 & 種下
-						$parts_bc_1 = array_slice($parts1, 1);
-						$parts_bc_2 = array_slice($parts2, 1);
-						$diff_rank = false;
-						foreach ($parts_bc_1 as $idx1 => $pbc1) {
-							foreach ($parts_bc_2 as $idx2 => $pbc2) {
-								// var_dump(levenshtein($pbc1, $pbc2));
-								if (levenshtein($pbc1, $pbc2) < $comb_dmin) {
-									// $comb = $parts1[0] . " " . $pbc1;
-									$comb[$m_idx][0] = $parts1[0];
-									$comb_common = array('idx' => $idx1, 'name' => $pbc1);
-									$comb_dmin = levenshtein($pbc1, $pbc2);
-									if ($idx1 != $idx2) {
-										$diff_rank = true;
+							// 種小名 & 種下
+							$parts_bc_1 = array_slice($parts1, 1);
+							$parts_bc_2 = array_slice($parts2, 1);
+							$diff_rank = false;
+							foreach ($parts_bc_1 as $idx1 => $pbc1) {
+								foreach ($parts_bc_2 as $idx2 => $pbc2) {
+									// var_dump(levenshtein($pbc1, $pbc2));
+									if (levenshtein($pbc1, $pbc2) < $comb_dmin) {
+										// $comb = $parts1[0] . " " . $pbc1;
+										$comb[$m_idx][0] = $parts1[0];
+										$comb_common = array('idx' => $idx1, 'name' => $pbc1);
+										$comb_dmin = levenshtein($pbc1, $pbc2);
+										if ($idx1 != $idx2) {
+											$diff_rank = true;
+										}
 									}
 								}
 							}
+							$comb[$m_idx][$comb_common['idx']+1] = $comb_common['name'];
+							$comb_string[$m_idx] = implode(" ", $comb[$m_idx]);
 						}
-						$comb[$m_idx][$comb_common['idx']+1] = $comb_common['name'];
-						$comb_string[$m_idx] = implode(" ", $comb[$m_idx]);
-					}
-					if ($moreThan1 || $diff_rank) {
-						$undecide = true;
-						$all_matched[$matched_name]['score'] = 'N/A';
-						// $all_matched[$matched_name]['matched'] = implode("|", array_unique($comb_string));
-						// echo $all_matched[$matched_name]['matched'];
-						if ($moreThan1) {
-							// 內容移除掉??
-							// $all_matched[$matched_name]['namecode'] = array();
-							// $all_matched[$matched_name]['accepted_namecode'] = array();
-							// $all_matched[$matched_name]['source'] = array();
-							$all_matched[$matched_name]['type'] .= " / Undecidable: Multiple cross-ranked matches";
-						}
-						elseif ($diff_rank) {
-							$all_matched[$matched_name]['type'] .= " / Undecidable: Cross-ranked match";
-						}
-					}
-				}
-				$srcMatchedAncCnt = array(); // source matched accepted name code count
-				$srcMatchedAnc = array(); // source matched accepted name code
-				$srcAnc = array(); // source accepted name code
-				// $all_matched[$matched_name]['best'] = array();
-				if (!empty($all_matched[$matched_name]['accepted_namecode']) && !$undecide) {
-	//var_dump($all_matched[$matched_name]);
-					$ncs = $all_matched[$matched_name]['namecode'];
-					$ancs = $all_matched[$matched_name]['accepted_namecode'];
-					$srcs = $all_matched[$matched_name]['source'];
-					foreach ($srcs as $src_idx => $src) {
-						if ($ncs[$src_idx] === $ancs[$src_idx]) {
-							$srcMatchedAncCnt[$src] += 1;
-							$srcMatchedAnc[$src][] = $ancs[$src_idx];
-						}
-						else {
-							$srcMatchedAncCnt[$src] += 0;
-						}
-						$srcAnc[$src][] = $ancs[$src_idx];
-					}
-
-					$max_count = 0;
-					if (count($srcMatchedAncCnt) > 0) {					
-						$original_type = $all_matched[$matched_name]['type'];
-						$all_matched[$matched_name]['type'] = '';
-						foreach ($srcMatchedAncCnt as $src => $srcMatchedAnc_cnt) {
-							if ($srcMatchedAnc_cnt > 1) {
-								// $all_matched[$matched_name]['score'] = 'N/A';
-								$all_matched[$matched_name]['type'] .= $original_type.' / '."Undecidable: Multiple matched, accepted names|";
-								$undecide = true;
+						if ($moreThan1 || $diff_rank) {
+							$undecide = true;
+							$all_matched[$matched_name]['score'] = 'N/A';
+							// $all_matched[$matched_name]['matched'] = implode("|", array_unique($comb_string));
+							// echo $all_matched[$matched_name]['matched'];
+							if ($moreThan1) {
+								// 內容移除掉??
+								// $all_matched[$matched_name]['namecode'] = array();
+								// $all_matched[$matched_name]['accepted_namecode'] = array();
+								// $all_matched[$matched_name]['source'] = array();
+								$all_matched[$matched_name]['type'] .= " / Undecidable: Multiple cross-ranked matches";
 							}
-							elseif ($srcMatchedAnc_cnt == 0) {
-								if (count(array_unique($srcAnc[$src])) > 1) {
+							elseif ($diff_rank) {
+								$all_matched[$matched_name]['type'] .= " / Undecidable: Cross-ranked match";
+							}
+						}
+					}
+					$srcMatchedAncCnt = array(); // source matched accepted name code count
+					$srcMatchedAnc = array(); // source matched accepted name code
+					$srcAnc = array(); // source accepted name code
+					// $all_matched[$matched_name]['best'] = array();
+					if (!empty($all_matched[$matched_name]['accepted_namecode']) && !$undecide) {
+		//var_dump($all_matched[$matched_name]);
+						$ncs = $all_matched[$matched_name]['namecode'];
+						$ancs = $all_matched[$matched_name]['accepted_namecode'];
+						$srcs = $all_matched[$matched_name]['source'];
+						foreach ($srcs as $src_idx => $src) {
+							if ($ncs[$src_idx] === $ancs[$src_idx]) {
+								$srcMatchedAncCnt[$src] += 1;
+								$srcMatchedAnc[$src][] = $ancs[$src_idx];
+							}
+							else {
+								$srcMatchedAncCnt[$src] += 0;
+							}
+							$srcAnc[$src][] = $ancs[$src_idx];
+						}
+
+						$max_count = 0;
+						if (count($srcMatchedAncCnt) > 0) {					
+							$original_type = $all_matched[$matched_name]['type'];
+							$all_matched[$matched_name]['type'] = '';
+							foreach ($srcMatchedAncCnt as $src => $srcMatchedAnc_cnt) {
+								if ($srcMatchedAnc_cnt > 1) {
 									// $all_matched[$matched_name]['score'] = 'N/A';
-									$all_matched[$matched_name]['type'] .= $original_type.' / '."Undecidable: Multiple accepted names of matched synonyms|";
+									$all_matched[$matched_name]['type'] .= $original_type.' / '."Undecidable: Multiple matched, accepted names|";
 									$undecide = true;
 								}
+								elseif ($srcMatchedAnc_cnt == 0) {
+									if (count(array_unique($srcAnc[$src])) > 1) {
+										// $all_matched[$matched_name]['score'] = 'N/A';
+										$all_matched[$matched_name]['type'] .= $original_type.' / '."Undecidable: Multiple accepted names of matched synonyms|";
+										$undecide = true;
+									}
+									else {
+										// $all_matched[$matched_name]['best'][$src] = $srcAnc[$src][0];
+										$all_matched[$matched_name]['type'] .= $original_type .'|';
+									}
+								}
 								else {
-									// $all_matched[$matched_name]['best'][$src] = $srcAnc[$src][0];
+									// $all_matched[$matched_name]['best'][$src] = $srcMatchedAnc[$src][0];
 									$all_matched[$matched_name]['type'] .= $original_type .'|';
 								}
 							}
-							else {
-								// $all_matched[$matched_name]['best'][$src] = $srcMatchedAnc[$src][0];
-								$all_matched[$matched_name]['type'] .= $original_type .'|';
-							}
 						}
 					}
 				}
-			}
+			// }
 		
 			// $all_matched[$matched_name]['taxonRank'] = detRank($all_matched[$matched_name]['matched'], $all_matched[$matched_name]['matched_clean']);
-			$res[$nidx][] = array_merge(array('score' => round($score/3.5,3)), $all_matched[$matched_name]);
+			
+			
+			// $res[$nidx][] = array_merge(array('score' => round($score/3.5,3)), $all_matched[$matched_name]);
+			
+			// 最後再把score加上去
+			$final_score = array();
+
+
+			foreach ($all_matched[$matched_name]['matched'] as $mmm) {
+				array_push($final_score, $score);
+			}
+
+			$all_matched[$matched_name]['score'] = $final_score;
+			
+			
+			$res[$nidx][] = $all_matched[$matched_name];
 			if ($best == 'yes' &&  $current_index+1 == $num_highest_score) {
 				break;
 			}
 			$current_index += 1;
 
 		}
-	}
-	else {
+	} else {
 
-		/**
+		/*
 		 * 單一字的比對，best與否只有差query語法
 		 */
 		$scores = array();
+		$total_score_array = array();
 
-		$all_matched = queryNameSingle($name, $name_cleaned, $against, $best, $ep);
-		// $all_matched = queryNameSingle('鐵杉', $against, 'yes', 'http://solr:8983/solr/taxa');
-		// $name='鐵杉';
+		$all_matched = queryNameSingle($name, $name_cleaned, $against, $best, $ep, $bio_group, $is_in_taiwan, $taxon_rank, $kingdom);
+
 		// kim: 比對後計算similarity
 		foreach ($all_matched as $matched_name => $matched) {
+			// 中文名
 			if (preg_match("/\p{Han}+/u", $name)){
-				$scores[$matched_name] = nameSimilaritySingle($matched['common_name'][0], $name_cleaned);
-			}else{
-				$scores[$matched_name] = nameSimilaritySingle($matched['matched_clean'], $name_cleaned);
+				
+				$return_score = nameSimilarityC($matched['common_name'], $name_cleaned);
+
+				$all_matched[$matched_name]['score'] = $return_score;
+
+				if ($best == 'yes') {
+					// 如果選擇最佳的話，要把不是分數最高的部分移除
+					$removing_array = array();
+					$return_score_keys = array_keys($return_score);
+					foreach($return_score_keys as $key) {
+						if ($return_score[$key] != max($return_score)){
+							array_push($removing_array, $key);
+							unset($return_score[$key]);
+						}
+					}
+
+					$return_keys = array_keys($all_matched[$matched_name]);
+					unset($return_keys[0]);
+					unset($return_keys[1]);
+					unset($return_keys[2]);
+
+					if (max($return_score) != 0) {
+
+						foreach ($return_keys as $rk) {
+							if (!in_array($rk, array('name', 'name_cleaned', 'matched_clean', 'type'))){
+								$now_keys = array_keys($all_matched[$matched_name][$rk]);						
+								foreach($now_keys as $key) {
+									if (in_array($key, $removing_array)){
+										unset($all_matched[$matched_name][$rk][$key]);
+									}
+								}
+								$all_matched[$matched_name][$rk] = array_values($all_matched[$matched_name][$rk]);
+							}
+						}
+					}
+
+					// 如果有多個最高同分結果
+					// 2024-11 改成優先給最下階層
+					// 用parent_taxon_id判斷是不是上下階層
+					// 先找出所有人的上階層 
+					// 如果有人的上階層是accepted_namecode 移除該accepted_namecode
+					// 只考慮source為TaiCOL的情況
+					// 只會在中文的單字查詢
+
+					if (count($return_score) > 1) {
+
+						$taicol_more_than_1 = filterBySource($all_matched, 'taicol');
+						$removing_array = array();
+
+						if (count($taicol_more_than_1[$matched_name]) > 1){
+							$taicol_parents = $all_matched[$matched_name]['parent_taxon_id'];
+							$taicol_selfs = $all_matched[$matched_name]['accepted_namecode'];
+
+							foreach (array_keys($taicol_parents) as $parent_key) {
+								// 如果有人的parent 是比對到的結果 移除掉parent
+								if (in_array($taicol_parents[$parent_key], $taicol_selfs)){
+									$removing_key = array_search($taicol_parents[$parent_key], $taicol_selfs);
+									array_push($removing_array, $removing_key);
+									unset($return_score[$removing_key]);
+								}
+							}
+						}
+						
+						// if (in_array('species', $all_matched[$matched_name]['taxon_rank'])){
+
+							// $removing_array = array();
+							// $sub_array = array ('subspecies',
+							// 					'nothosubspecies',
+							// 					'variety',
+							// 					'subvariety',
+							// 					'nothovariety',
+							// 					'form',
+							// 					'subform',
+							// 					'special-form',
+							// 					'race',
+							// 					'stirp',
+							// 					'morph',
+							// 					'aberration',
+							// 					'hybrid-formula');
+
+							// foreach (array_keys($all_matched[$matched_name]['taxon_rank']) as $key) {
+
+							// 	if (in_array($all_matched[$matched_name]['taxon_rank'][$key], $sub_array)) {
+							// 		array_push($removing_array, $key);
+							// 		unset($return_score[$key]);		
+							// 	}
+
+							// }
+
+							if (count($removing_array) > 0){
+								foreach ($return_keys as $rk) {
+									if (!in_array($rk, array('name', 'name_cleaned', 'matched_clean', 'type'))){
+										$now_keys = array_keys($all_matched[$matched_name][$rk]);						
+										foreach($now_keys as $key) {
+											if (in_array($key, $removing_array)){
+												unset($all_matched[$matched_name][$rk][$key]);
+											}
+										}
+										$all_matched[$matched_name][$rk] = array_values($all_matched[$matched_name][$rk]);
+									}
+								}
+							}
+						// }
+					}
+
+				}
+				$return_score = array_values($return_score);
+				$scores[$matched_name] = $return_score;
+				$total_score_array = array_merge($total_score_array, $return_score);
+
+			} else {
+
+				$return_score = nameSimilaritySingle($matched['matched_clean'], $name_cleaned);
+
+				$final_score = array();
+
+				foreach($matched['matched'] as $mmm){
+					array_push($final_score, $return_score);
+				}
+
+				$scores[$matched_name] = $final_score;
+				$all_matched[$matched_name]['score'] = $final_score;
+
+				$total_score_array = array_merge($total_score_array, $final_score);
+			}
+
+		}
+
+		if (count($total_score_array)>1){
+			$highest_score = max($total_score_array);
+			if ($best == 'yes'){
+				foreach ($all_matched as $matched_name => $matched) {
+					$current_max_score = max($all_matched[$matched_name]['score']);
+					if ($highest_score != $current_max_score){
+						unset($all_matched[$matched_name]);
+						unset($scores[$matched_name]);
+					}
+				}
 			}
 		}
-		// kim: 根據score排序
-		arsort($scores);
 
-		// 如果選best, 要顯示所有最高同分的結果
-		// 先計算有幾個best，for loop跑到該數字
-		$arr1 = array();
-		foreach($scores as $k=>$score)
-		{
-			$arr1[$k]    = (string) $score;
-		}
-		$score_vals = array_count_values($arr1);
-		$num_highest_score = current($score_vals);
-		$current_index = 0;
-
-		foreach ($scores as $matched_name => $score) {
-
-			if ($score < 0) { // kim: 最小為零
-				$score = 0;
-			}
-
-			if ($score==1){
-				$all_matched[$matched_name]['type'].='Full match';
-			} elseif ($score < 1 and $matched_name != '') {
-				$all_matched[$matched_name]['type'].='Fuzzy match';
-			}			
+		foreach ($scores as $matched_name => $score_array) {
+			// 合併各單位的type
 
 			$srcMatchedAncCnt = array(); // source matched accepted name code count
 			$srcMatchedAnc = array(); // source matched accepted name code
 			$srcAnc = array(); // source accepted name code
+			$type_array = array(); // source accepted name code
 
 			// 分數一樣且有多個結果
 			if (!empty($all_matched[$matched_name]['accepted_namecode'])) {
 				$ncs = $all_matched[$matched_name]['namecode'];
 				$ancs = $all_matched[$matched_name]['accepted_namecode'];
 				$srcs = $all_matched[$matched_name]['source'];
+				$now_scores = $all_matched[$matched_name]['score'];
 				foreach ($srcs as $src_idx => $src) {
+					$now_score = $now_scores[$src_idx];
+					// print_r($src);
 					if ($ncs[$src_idx] === $ancs[$src_idx]) {
 						$srcMatchedAncCnt[$src] += 1;
 						$srcMatchedAnc[$src][] = $ancs[$src_idx];
@@ -341,12 +502,23 @@ foreach ($names as $nidx => $name) {
 					else {
 						$srcMatchedAncCnt[$src] += 0;
 					}
+
+					if ($now_score==1){
+						$type_array[$src] = 'Full match';
+					} elseif (preg_match("/\p{Han}+/u", $matched_name) && $now_score==0.95) {
+						// 這邊有可能是fullmatch 但有被加權減掉分數
+						// 如果是中文的話 基本上只會有 1 / 0.95 / 0 這幾種分數
+						$type_array[$src] = 'Full match';
+					} elseif ($now_score < 1 and $matched_name != '') {
+						$type_array[$src] = 'Fuzzy match';
+					}			
+
+					
 					$srcAnc[$src][] = $ancs[$src_idx];
 				}
-
 				$max_count = 0;
 				if (count($srcMatchedAncCnt) > 0) { 
-					$original_type = $all_matched[$matched_name]['type'];
+					$original_type = $type_array[$src];
 					$all_matched[$matched_name]['type'] = '';
 					foreach ($srcMatchedAncCnt as $src => $srcMatchedAnc_cnt) {
 						if ($srcMatchedAnc_cnt > 1) {
@@ -366,21 +538,18 @@ foreach ($names as $nidx => $name) {
 					}
 				}
 			} 
-		
-			// $all_matched[$matched_name]['taxonRank'] = detRank($all_matched[$matched_name]['matched'], $all_matched[$matched_name]['matched_clean']);
-			$res[$nidx][] = array_merge(array('score' => $score), $all_matched[$matched_name]);
 
-			if ($best == 'yes' &&  $current_index+1 == $num_highest_score) {
-				break;
-			}
+			# END of type
+			$res[$nidx][] = $all_matched[$matched_name];
 
-			$current_index += 1;
 		}
 
 	}
 }
 
+
 $etime = microtime(true);
+
 
 render($res, $format, $etime - $stime, $best, $against, $next_page, $previous_page, $names_str);
 
@@ -420,7 +589,7 @@ function render_table ($data, $time, $hardcsv=false, $next_page, $previous_page,
 	);
 
 	echo "<head>";
-	echo "<link href='http://fonts.googleapis.com/css?family=Roboto|Slabo+27px&subset=latin,latin-ext' rel='stylesheet' type='text/css'>";
+	echo "<link href='https://fonts.googleapis.com/css?family=Roboto|Slabo+27px&subset=latin,latin-ext' rel='stylesheet' type='text/css'>";
 	echo "<script src='https://code.jquery.com/jquery-2.1.4.min.js'></script>";
 	echo "<link href='https://maxcdn.bootstrapcdn.com/bootswatch/3.3.7/cerulean/bootstrap.min.css' rel='stylesheet' integrity='sha384-zF4BRsG/fLiTGfR9QL82DrilZxrwgY/+du4p/c7J72zZj+FLYq4zY00RylP9ZjiT' crossorigin='anonymous'>";
 	echo "<script src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js' integrity='sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa' crossorigin='anonymous'></script>";
@@ -468,7 +637,7 @@ function render_table ($data, $time, $hardcsv=false, $next_page, $previous_page,
 	echo "</div>";
 	echo "</div><div class='container'><br/><br/><br/></div>";
 
-	echo "<div class='container' style='margin-left:50px;'>";
+	echo "<div class='container' style='width:98%;'>";
 	echo "<h1 class='navbar-brand m-b-0'>Matching results</h1>";
 	echo "<p>";
 	echo "query time: " . round($time, 3) . " s<br/>";
@@ -496,6 +665,8 @@ function render_table ($data, $time, $hardcsv=false, $next_page, $previous_page,
 	echo "<input type='hidden' name='page' value=''>";
 	//echo "<input type='submit'>";
 	echo "</form>";
+	echo "<div class='table-responsive'>";
+
 	echo "<table class='table table-bordered' style='width: 95vw'>";
 
 	$tmp_data0 = $data[0][0];
@@ -503,12 +674,17 @@ function render_table ($data, $time, $hardcsv=false, $next_page, $previous_page,
 		unset($tmp_data0[$ns]);
 	}
 
-	$columns = array_keys($tmp_data0);
+	// $columns = array_keys($tmp_data0);
 
-	$titles = array('score','search<br/>term','matched<br/>clean','matched','common<br/>name','accepted<br/>namecode','namecode',
+	// print_r($columns );
+
+	$columns = array('name','matched_clean','score','matched','common_name','accepted_namecode','namecode','name_status','source',
+		'kingdom','phylum','class','order','family','genus','taxon_rank','type','id'
+	);
+
+	$titles = array('search<br/>term','matched<br/>clean','score','matched','common<br/>name','accepted<br/>namecode','namecode',
 					'name<br/>status','source','kingdom','phylum','class','order','family','genus','taxon<br/>rank','match<br/>type');
 	
-
 	// 標題
 	echo "<tbody><tr class='title'><td>" . implode("</td><td>", $titles) . "</td></tr></tbody>\n";
 	// $prev_score = -100;
@@ -518,15 +694,21 @@ function render_table ($data, $time, $hardcsv=false, $next_page, $previous_page,
 	unset($columns[2]); // matched_clean
 	unset($columns[15]); // type
 	unset($columns[17]); // id
-
 	print_r($columns);*/
 
-	$not_col_array = array('score','name','matched_clean','type','id');
-
+	// $not_col_array = array('score','name','matched_clean','type','id');
+	$not_col_array = array('name','matched_clean','type','id');
+	
 	// 內文
 	foreach ($data as $nidx => $name_d) {
 		foreach ($name_d as $d) {
+
+			// echo '=======';
+			// print_r($d);
+			// echo '=======';
+
 			$source_for_type = $d['source'];
+
 			$ncs = $d['namecode'];
 			$ancs = $d['accepted_namecode'];
 			$sources = $d['source'];
@@ -571,7 +753,6 @@ function render_table ($data, $time, $hardcsv=false, $next_page, $previous_page,
 			$d['namecode'] = $html_ncs;
 			$d['accepted_namecode'] = $html_ancs;
 			$d['source'] = $html_sources;
-
 			echo "<tbody>";
 			// $d 是每個matched_clean的集合
 			$d['name'] = htmlentities($d['name']);
@@ -580,7 +761,8 @@ function render_table ($data, $time, $hardcsv=false, $next_page, $previous_page,
 			$rowspan = count($d['accepted_namecode']);
 
 			// 第一行
-			echo "<tr class='row_result' id='row_".$serial_no."'><td rowspan='".$rowspan."'>".$d['score']."</td><td rowspan='".$rowspan."'>";
+			// echo "<tr class='row_result' id='row_".$serial_no."'><td rowspan='".$rowspan."'>".$d['score']."</td><td rowspan='".$rowspan."'>";
+			echo "<tr class='row_result' id='row_".$serial_no."'><td rowspan='".$rowspan."'>";
 			echo $d['name']."</td>";
 			echo "<td rowspan='".$rowspan."'>".$d['matched_clean']."</td>";
 			foreach ($columns as $c) {
@@ -594,6 +776,8 @@ function render_table ($data, $time, $hardcsv=false, $next_page, $previous_page,
 					} else {
 						if (!$d[$c]) {
 							echo "<td></td>";
+						} else if ($c == 'source'){
+							echo "<td>".str_replace('taicol','taicol',$d[$c][0])."</td>";
 						} else {
 							echo "<td>".$d[$c][0]."</td>";
 						}
@@ -606,9 +790,13 @@ function render_table ($data, $time, $hardcsv=false, $next_page, $previous_page,
 			
 			$source_count_values = array_count_values($source_for_type);
 						
-			if (count(array_unique($d['type'])) >1 && count(explode(" ", $d['matched_cleaned'])) == 1){
+			// if (count(array_unique($d['type'])) >1 && count(explode(" ", $d['matched_cleaned'])) == 1){
+			// 	echo "<td rowspan='".$source_count_values[$source_for_type[0]]."'>".$d['type'][0]."</td>";
+			// }
+			if (count(explode(" ", $d['matched_cleaned'])) == 1){
 				echo "<td rowspan='".$source_count_values[$source_for_type[0]]."'>".$d['type'][0]."</td>";
-			} else {
+			} 
+			else {
 				echo "<td rowspan='".$rowspan."'>".$d['type'][0]."</td>";
 			}
 			echo "</tr>\n";
@@ -622,20 +810,30 @@ function render_table ($data, $time, $hardcsv=false, $next_page, $previous_page,
 					foreach ($columns as $c) {
 						if (!in_array($c, $not_col_array)){
 							if (($c == 'matched' && !preg_match("/\p{Han}+/u", $d['name']))|| ($c == 'common_name' && preg_match("/\p{Han}+/u", $d['name']))){
-								echo "<td class='matched'>".$d[$c][$n]."</td>";
-							} else {
+								echo "<td class='matched'>".$d[$c][$n]."</td>";						
+							} else if ($c == 'source'){
+								echo "<td>".str_replace('taicol','taicol',$d[$c][$n])."</td>";
+							} 
+							else {
 								echo "<td>".$d[$c][$n]."</td>";
 							}
 						}
 					}
 					// type
-					if (count(array_unique($d['type'])) >1 && count(explode(" ", $d['matched_cleaned'])) == 1){
-						if ($n == $type_count){
-							$current_source_index += 1;
-							$type_count += $source_count_values[$source_for_type[$n]];
-							echo "<td rowspan='".$source_count_values[$source_for_type[$n]]."'>".$d['type'][$current_source_index]."</td>";
-						}
+					// if (count(array_unique($d['type'])) >1 && count(explode(" ", $d['matched_cleaned'])) == 1){
+					if ($n == $type_count){
+						$current_source_index += 1;
+						$type_count += $source_count_values[$source_for_type[$n]];
+						echo "<td rowspan='".$source_count_values[$source_for_type[$n]]."'>".$d['type'][$current_source_index]."</td>";
 					}
+					// }
+					// if (count(array_unique($d['type'])) >1 && count(explode(" ", $d['matched_cleaned'])) == 1){
+					// 	if ($n == $type_count){
+					// 		$current_source_index += 1;
+					// 		$type_count += $source_count_values[$source_for_type[$n]];
+					// 		echo "<td rowspan='".$source_count_values[$source_for_type[$n]]."'>".$d['type'][$current_source_index]."</td>";
+					// 	}
+					// }
 					echo "</tr>\n";	
 				}
 				
@@ -644,7 +842,8 @@ function render_table ($data, $time, $hardcsv=false, $next_page, $previous_page,
 		}
 	}
 	echo "</table>\n";
-	echo "<script src='./js/diffName.js'></script>";
+	echo "</div>\n";
+	echo "<script src='./js/diffName.js?v1'></script>";
 
 	echo "</div>";
 	echo "</body>";
@@ -683,9 +882,10 @@ function render_csv ($data) {
 	// echo "sep=\t\n";
 
 	$header = array(
-		'score',
 		'search_term',
+		'name_cleaned',
 		'matched_clean',
+		'score',
 		'matched',
 		'simple_name',
 		'common_name',
@@ -704,13 +904,13 @@ function render_csv ($data) {
 
 	$columns = $header;
 	//unset($columns[16]); // match_type
-	unset($columns[1]); // search_term
+	unset($columns[0]); // search_term
+	unset($columns[1]); // name_cleaned
 	unset($columns[2]); // matched_clean
-	unset($columns[0]); // score
+	// unset($columns[0]); // score
 
 	$results = array();
 	array_push($results, $header);
-
 
 	foreach($data as $d){
 		foreach($d as $dsub){
@@ -721,14 +921,19 @@ function render_csv ($data) {
 			$source_count_values = array_count_values($source_for_type);
 
 			$tmp_keys = array_keys($dsub['matched']);
-			if ($tmp_keys) {
+			if ($tmp_keys){
 				foreach($tmp_keys as $k){
 					$tmp = array();
-					$tmp['score'] = $dsub['score'];
+					// $tmp['score'] = $dsub['score'];
 					$tmp['search_term'] = $dsub['name'];
+					$tmp['name_cleaned'] = $dsub['name_cleaned'];
 					$tmp['matched_clean'] = $dsub['matched_clean'];
 					foreach($columns as $c){
-						$tmp[$c] = $dsub[$c][$k];
+						if ($c == 'source'){
+							$tmp[$c] = str_replace('taicol','taicol',$dsub[$c][$k]);
+						} else {
+							$tmp[$c] = $dsub[$c][$k];
+						}
 					}
 
 					$current_source_index = 0;
@@ -741,9 +946,11 @@ function render_csv ($data) {
 				}
 			} else {
 				$tmp = array();
-				$tmp['score'] = $dsub['score'];
+				// $tmp['score'] = $dsub['score'];
 				$tmp['search_term'] = $dsub['name'];
+				$tmp['name_cleaned'] = $dsub['name_cleaned'];
 				$tmp['matched_clean'] = $dsub['matched_clean'];
+				$tmp['score'] = '';
 				$tmp['matched'] = '';
 				$tmp['simple_name'] = '';
 				$tmp['common_name'] = '';
@@ -775,6 +982,7 @@ function render_json ($data, $time, $best, $against, $next_page, $previous_page,
 	header('Content-Type: application/json; charset=utf-8');
 
 	$columns = array(
+		'score',
 		'matched',
 		'simple_name',
 		'common_name',
@@ -805,8 +1013,9 @@ function render_json ($data, $time, $best, $against, $next_page, $previous_page,
 
 			$tmp_array = array(
 				'search_term' => $dsub['name'],
+				'name_cleaned' => $dsub['name_cleaned'],
 				'matched_clean' => $dsub['matched_clean'],
-				'score' => $dsub['score']
+				// 'score' => $dsub['score']
 			);
 			$tmp_keys = array_keys($dsub['matched']);
 			$tmp_results = array();
@@ -814,7 +1023,11 @@ function render_json ($data, $time, $best, $against, $next_page, $previous_page,
 				$tmp = array();
 
 				foreach($columns as $c){
-					$tmp[$c] = $dsub[$c][$k];
+					if ($c == 'source'){
+						$tmp[$c] = str_replace('taicol','taicol',$dsub[$c][$k]);
+					} else {
+						$tmp[$c] = $dsub[$c][$k];
+					}
 				}
 
 				$current_source_index = 0;
@@ -833,6 +1046,10 @@ function render_json ($data, $time, $best, $against, $next_page, $previous_page,
 	}
 
 	//print_r($test);
+
+	if ($against=='taicol') {
+		$against = 'taicol';
+	}
 
 	echo json_encode(array(
 		'query' => array(
@@ -979,31 +1196,67 @@ echo "</xmp>";
 		var_dump(array($matched, $penalty, $score, $score - $penalty));
 		echo "</xmp>";
 		//*/
-	return $score - $penalty;
+	// echo $score;
+	// echo '----';
+	// echo $penalty;
+
+	return round(($score - $penalty)/3.5,3);
 }
 
 
 // 種以上階層的score計算
 
 function nameSimilaritySingle($matched_cleaned, $name){
-	// $name= '鐵杉';
-	// $common_name_array= explode(",", '臺灣鐵杉,油松,台灣鐵杉');
-
+	
 	if ($matched_cleaned == 'N/A' or empty($matched_cleaned)) {
 		return 0;
-	} elseif (preg_match("/\p{Han}+/u", $name)){ 
-		// 如果是中文的話, 先把common_name_c(matched_clean)用逗號分隔,分別計算並取最高值
-		$common_name_array = explode(",", $matched_cleaned);
-		$common_name_score = array();
-		foreach ($common_name_array as $cn) {
-			$penalty = levenshtein($cn, $name) / max(strlen($cn), strlen($name));
-			array_push($common_name_score, 1 - $penalty);
-		}
-		return max($common_name_score);
-	}
-	else {
+	} else {
 		$penalty = levenshtein($matched_cleaned, $name) / max(strlen($matched_cleaned), strlen($name));
-		return 1 - $penalty;
+		return round((1 - $penalty), 3);
+	} 
+}
+
+
+// 計算中文名的分數
+function nameSimilarityC($matched_cleaned, $name){
+
+
+	if ($matched_cleaned == 'N/A' or empty($matched_cleaned)) {
+
+		// foreach ($ as $mc){
+		// 	$final_score = array_merge(array(0), array(0));
+		// }
+		return array(0);
+
+	} else {
+		// 如果是中文的話, 先把common_name_c(matched_clean)用逗號分隔,分別計算並取最高值
+		$common_name_score_array = array();
+
+		foreach ($matched_cleaned as $mc){
+
+			$common_name_array = explode(",", $mc);
+			$common_name_score = array();
+			$current_count = 0;
+
+			foreach ($common_name_array as $cn) {
+				// $penalty = levenshtein($cn, $name) / max(strlen($cn), strlen($name));
+				// $penalty 越低代表越相近
+				// 如果 $current_count > 0 代表是別名 $penalty要給較高的權重
+				$penalty = levenshtein(treat_word_c($cn), treat_word_c($name)) / max(strlen($cn), strlen($name));
+				if ($current_count > 0){
+					// 不能用乘法 因為原本就是0 
+					$penalty += 0.05;
+				}
+				array_push($common_name_score, 1 - $penalty);
+				$current_count += 1;
+				
+			}
+			
+			array_push($common_name_score_array,  max($common_name_score));
+		}
+
+		return $common_name_score_array;
+
 	} 
 }
 
@@ -1038,6 +1291,35 @@ function array_sort_by_column(&$arr, $col, $dir = SORT_STRING) {
     }
 
     array_multisort($sort_col, $dir, $arr);
+}
+
+
+function filterBySource($data, $targetSource) {
+    $result = [];
+
+    foreach ($data as $key => $item) {
+        if (isset($item['source'])) {
+            // 找出 source 中符合條件的索引
+            $matchedIndexes = array_keys($item['source'], $targetSource);
+
+            if (!empty($matchedIndexes)) {
+                // 初始化結果
+                $result[$key] = [];
+
+                foreach ($item as $field => $values) {
+                    if (is_array($values)) {
+                        // 根據索引篩選
+                        $result[$key][$field] = array_intersect_key($values, array_flip($matchedIndexes));
+                    } else {
+                        // 非陣列欄位直接保留
+                        $result[$key][$field] = $values;
+                    }
+                }
+            }
+        }
+    }
+
+    return $result;
 }
 
 
