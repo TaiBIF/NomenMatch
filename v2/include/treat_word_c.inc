@@ -1,7 +1,7 @@
 <?php
 
 /**
- * 2022-04 Jin-Ying Lee
+ * 2026-06 Jin-Ying Lee
  * 處理中文異體字
  */
 
@@ -9,62 +9,42 @@
 // 前面是匹配字串內有沒有異體字，後面是for solr查詢的regex
 global $variants_array;
 
-$variants_array = [
-	["/\臺|台/",'[臺台]'],
-	["/\群|羣/",'[群羣]'],
-	["/\峯|峰/",'[峯峰]'],
-	["/\晒|曬/",'[晒曬]'],
-	["/\裏|裡/",'[裏裡]'],
-	["/\荐|薦/",'[荐薦]'],
-	["/\豔|艷/",'[豔艷]'],
-	["/\妝|粧/",'[妝粧]'],
-	["/\溼|濕/",'[溼濕]'],
-	["/\梁|樑/",'[梁樑]'],
-	["/\祕|秘/",'[祕秘]'],
-	["/\汙|污/",'[汙污]'],
-	["/\冊|册/",'[冊册]'],
-	["/\脣|唇/",'[脣唇]'],
-	["/\朵|朶/",'[朵朶]'],
-	["/\雞|鷄/",'[雞鷄]'],
-	["/\貓|猫/",'[貓猫]'],
-	["/\蹤|踪/",'[蹤踪]'],
-	["/\恆|恒/",'[恆恒]'],
-	["/\貛|獾/",'[貛獾]'],
-	["/\萬|万/",'[萬万]'],
-	["/\兩|两/",'[兩两]'],
-	["/\槮|椮/",'[槮椮]'],
-	["/\體|体/",'[體体]'],
-	["/\鰻|鳗/",'[鰻鳗]'],
-	["/\虱|蝨/",'[虱蝨]'],
-	["/\鰺|鲹|鯵/",'[鰺鲹鯵]'],
-	["/\鱗|鳞/",'[鱗鳞]'],
-	["/\鯿|鳊/",'[鯿鳊]'],
-	["/\鯊|鲨/",'[鯊鲨]'],
-	["/\䴉|鹮/",'[䴉鹮]'],
-	["/\鴴|行鳥/",'(行鳥|鴴)'],
-	["/\鵐|巫鳥/",'(鵐|巫鳥)'],
-	["/\䱵|魚翁/",'(䱵|魚翁)'],
-	["/\䲗|魚銜/",'(䲗|魚銜)'],
-	["/\䱀|魚央/",'(䱀|魚央)'],
-	["/\䳭|即鳥/",'(䳭|即鳥)'],
-	["/\魚|鱼/",'[魚鱼]'],
-	["/\鷚|鹨/",'[鷚鹨]'],
-	["/\薊|蓟/",'[薊蓟]'],
-	["/\黑|黒/",'[黑黒]'],
-	["/\隱|隠/",'[隱隠]'],
-	["/\黃|黄/",'[黃黄]'],
-	["/\嚙|囓/",'[嚙囓]'],
-	["/\茛|莨/",'[茛莨]'],
-	["/\黴|霉/",'[黴霉]'],
-	["/\苺|莓/",'[苺莓]'],
-	["/\葯|藥/",'[葯藥]'],
-	["/\堇|菫/",'[堇菫]'],
-	["/\蝦虎|鰕虎/",'[鰕蝦]虎'],
-	["/\游蛇|遊蛇/",'[遊游]蛇'],
-	["/\椿象|蝽象/",'[蝽椿]象'],	
-	["/\鈎|鉤/",'[鈎鉤]'],	
-	["/\螺|螺/",'[螺螺]'],	
-  ];
+
+$url = "https://raw.githubusercontent.com/TaiBIF/tbia-portal/main/data/variants.json";
+$curl = curl_init();
+curl_setopt($curl, CURLOPT_URL, $url);
+curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+curl_setopt($curl, CURLOPT_TIMEOUT, 120);
+$result = curl_exec($curl);
+$arrayData = json_decode($result, true);
+
+
+$url = "https://raw.githubusercontent.com/TaiBIF/tbia-portal/main/data/composites.json";
+$curl = curl_init();
+curl_setopt($curl, CURLOPT_URL, $url);
+curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+curl_setopt($curl, CURLOPT_TIMEOUT, 120);
+$result = curl_exec($curl);
+$mapData = json_decode($result, true);
+
+
+// 處理陣列形式：每個子陣列 -> ['/綠|綠/', '[綠綠]']
+$arrayResult = array_map(function($group) {
+    $regex = '/'. implode('|', $group) . '/';
+    $charClass = '[' . implode('', $group) . ']';
+    return [$regex, $charClass];
+}, $arrayData);
+
+// 處理關聯陣列形式：每個鍵值對 -> ['/䳭|即鳥/', '(䳭|即鳥)']
+$mapResult = array_map(function($key, $val) {
+    $regex = '/'. $key . '|' . $val . '/';
+    $group = '(' . $key . '|' . $val . ')';
+    return [$regex, $group];
+}, array_keys($mapData), array_values($mapData));
+
+// 合併兩者
+$variants_array = array_merge($arrayResult, $mapResult);
+
   
 function treat_word_c ($string) {
 	foreach ($GLOBALS['variants_array'] as $value) {
