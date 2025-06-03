@@ -386,20 +386,23 @@ foreach ($names as $nidx => $name) {
 						$taicol_more_than_1 = filterBySource($all_matched, 'taicol');
 						$removing_array = array();
 
-						if (count($taicol_more_than_1[$matched_name]) > 1){
-							$taicol_parents = $all_matched[$matched_name]['parent_taxon_id'];
-							$taicol_selfs = $all_matched[$matched_name]['accepted_namecode'];
+						if (count($taicol_more_than_1) > 0){
 
-							foreach (array_keys($taicol_parents) as $parent_key) {
-								// 如果有人的parent 是比對到的結果 移除掉parent
-								if (in_array($taicol_parents[$parent_key], $taicol_selfs)){
-									$removing_key = array_search($taicol_parents[$parent_key], $taicol_selfs);
-									array_push($removing_array, $removing_key);
-									unset($return_score[$removing_key]);
+							if (count($taicol_more_than_1[$matched_name]) > 1){
+								$taicol_parents = $all_matched[$matched_name]['parent_taxon_id'];
+								$taicol_selfs = $all_matched[$matched_name]['accepted_namecode'];
+
+								foreach (array_keys($taicol_parents) as $parent_key) {
+									// 如果有人的parent 是比對到的結果 移除掉parent
+									if (in_array($taicol_parents[$parent_key], $taicol_selfs)){
+										$removing_key = array_search($taicol_parents[$parent_key], $taicol_selfs);
+										array_push($removing_array, $removing_key);
+										unset($return_score[$removing_key]);
+									}
 								}
 							}
 						}
-						
+							
 						// if (in_array('species', $all_matched[$matched_name]['taxon_rank'])){
 
 							// $removing_array = array();
