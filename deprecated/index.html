@@ -55,6 +55,7 @@
 <div class="panel">
     <div class="panel-body">
         <h3>NomenMatch (code name: MyMatch): a scientific-name checking tool</h3>
+        <p><a href="/v2/index.html">New version of NomenMatch is out now! 👉</a></p>
     </div>
 </div>
 </div>
@@ -74,7 +75,7 @@
     <td>Result format
         <select name="format" class="form-control" id="format">
               <option name='format' value='table' selected="selected"/>table</option>
-              <!--option name='format' value='plain'/>plain text</option-->
+              <option name='format' value='plain'/>plain text</option>
               <option name='format' value='json'/>json</option>
               <option name='format' value='csv'/>csv</option>
         </select>
@@ -82,7 +83,7 @@
     <td>
         <div id='source_wrapper'>
         Sources
-          <select name="source" class="form-control" id="sources">
+          <select name="against" class="form-control" id="sources">
             <option value='' selected="selected"/>All<br/>
           </select>
         </div>
@@ -99,15 +100,15 @@
     <td>Best results only?
         <select name="best" class="form-control" id="best">
             <option value='yes' selected="selected"/>Yes (fast and simple)</option>
-            <!-- option value='mid'/>Medium (fast and informative)</option -->
-            <option value='no'/>No (slow and informative)</option>
+            <option value='mid'/>Medium (fast and informative)</option>
+            <option value='no'/>No (slow and most informative)</option>
         </select>
     </td>
     <td>Solr endpoints
         <select name="ep" class="solr_endpoints form-control" id="solr_endpoint_selector">
             <option id="default_solr_endpoint" value='http://solr:8983/solr/taxa' selected="selected" /> DEFAULT (@placeholder) </option>
         <!--input class='solr_endpoints' type='radio' name='ep' value='http://example.org/solr'> Test solr endpoint selection <br/-->
-             <!--option value='http://match.taibif.tw:8983/solr'/> Instance@match.taibif.tw</option-->
+            <option value='http://match.taibif.tw:8983/solr'/> Instance@match.taibif.tw</option>
         </select>
     </td>
     </tr>

@@ -9,8 +9,6 @@
 
   <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.3.7/cerulean/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
   <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
-  <!--script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" crossorigin="anonymous"></script-->
-
 
   <link href="css/default.css" rel="stylesheet">
 </head>
@@ -42,9 +40,10 @@
     <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-2">
       <ul class="nav navbar-nav">
           <li><a href="about.html">About</a></li>
+          <!--
           <li><a href="index.html">Match</a></li>
           <li><a href="howto.html">How-To</a></li>
-          <li><a href="api-doc.html">API</a></li>
+          <li><a href="api-doc.html">API</a></li>-->
       </ul>
    </div>
   </div>
@@ -63,157 +62,26 @@
 <div class="container">
 <div class="panel panel-default">
   <div class="panel-heading">
-    <h3 class="panel-title">Query settings</h3>
+    <h3 class="panel-title">Service Discontinuation Notice</h3>
   </div>
 
   <div class="panel-body">
 
-    <!-- settings -->
-    <form action="api.php" method='post'>
-    <table class="table">
-    <tr>
-    <td>Result format
-        <select name="format" class="form-control" id="format">
-              <option name='format' value='table' selected="selected"/>table</option>
-              <option name='format' value='plain'/>plain text</option>
-              <option name='format' value='json'/>json</option>
-              <option name='format' value='csv'/>csv</option>
-        </select>
-    </td>
-    <td>
-        <div id='source_wrapper'>
-        Sources
-          <select name="against" class="form-control" id="sources">
-            <option value='' selected="selected"/>All<br/>
-          </select>
-        </div>
-    </td>
-    <td>
-        <div id='source_revisions_wrapper'>
-        Version
-          <div id='source_revisions'>
-            <div><a></a></div>
-          </div>
-        </div>
-    </td>
+This version of NomenMatch has been discontinued and is no longer in service or maintenance. 
+<br>
 
-    <td>Best results only?
-        <select name="best" class="form-control" id="best">
-            <option value='yes' selected="selected"/>Yes (fast and simple)</option>
-            <option value='mid'/>Medium (fast and informative)</option>
-            <option value='no'/>No (slow and most informative)</option>
-        </select>
-    </td>
-    <td>Solr endpoints
-        <select name="ep" class="solr_endpoints form-control" id="solr_endpoint_selector">
-            <option id="default_solr_endpoint" value='http://solr:8983/solr/taxa' selected="selected" /> DEFAULT (@placeholder) </option>
-        <!--input class='solr_endpoints' type='radio' name='ep' value='http://example.org/solr'> Test solr endpoint selection <br/-->
-            <option value='http://match.taibif.tw:8983/solr'/> Instance@match.taibif.tw</option>
-        </select>
-    </td>
-    </tr>
-    </table>
-    <!-- /settings -->
-    </div>
-    </div>
+Please visit the new version of NomenMatch at: <a href="https://match.taibif.tw/v2/index.html">https://match.taibif.tw/v2/index.html</a>
+<br>
+For any questions or inquiries, please feel free to contact us at: <a href="mailto:catalogueoflife.taiwan@gmail.com">catalogueoflife.taiwan@gmail.com</a>
+<br>
 
-    <!-- queryNames -->
-    <div class="panel panel-default">
-        <div class="panel-body">
-           <h3 class="panel-title">Scientific names<h3/>
-                   <small>You can input one scientific name per line without or with authors, 
-                       such as <i>Taiwania cryptomerioides</i> or <i>Taiwania cryptomerioides</i> Hayata</small>
-                   <textarea class="form-control" rows="10" name="names" placeholder='Taiwania cryptomerioides'></textarea><br/>
-           <input class="btn btn-primary" id='submit_query' type='submit' name='query' value='Check names'/>
-            <!--input type='hidden' name='lang' value='zh'/-->
-        </div>
-    </div>
+Thank you for your understanding.
 
+  </div>
 
-    <div id="citations">
-    </div>
-    </form>
-    <!-- /queryNames -->
-
-
-<div id='source_tpl' style='display:none'><option value='' selected='selected'> ALL </option></div>
-<div id='citation_tpl' style='display:none'><div>Data Citations</div></div>
 </div>
 
 <script>
-
-$(document).ready(function(){
-	// read info from default solr endpoint
-	$.get("./conf/solr_endpoint", function (solr_endpoint) {
-	  var ep = solr_endpoint;
-	  //$('#default_endpoint_host').text(ep.split('//')[1].split('/')[0].split(':')[0].replace('localhost', window.location.host));
-          var default_ep_host = $('#default_solr_endpoint').text().replace('@placeholder', ep.replace('localhost', window.location.host).replace('\n', ''));
-	  $('#default_solr_endpoint').text(default_ep_host);
-	  //$('#default_endpoint').val(ep).change();
-	  ep_encoded = encodeURIComponent(ep);
-	  $.get("count.php?ep=" + ep_encoded, function (data) {
-	    if (data.length > 0) {
-	      $("#sources").html($("#source_tpl").html());
-	      $("#citations").html($("#citation_tpl").html());
-              var sources_html = "";
-              var citations_html = "";
-              var revisions_html = "<div style='display:none;' class='revision_link revision_link_no_0'><a>#N/A</a></div>";
-	      for (var i=0; i<data.length; i++) {
-	        //$("#"+data[i].source+"_num").html(data[i].count);
-                sources_html += "<option value='"+data[i].source+"'> "+data[i].name+": "+data[i].count+"</option>";
-                citations_html += "<li>"+data[i].citation+"</li>";
-                revisions_html += "<div style='display:none;' class='revision_link revision_link_no_" + (i+1) + "'><a href='" + data[i].url + "'>" + data[i].version + "</a></div>";
-	      }
-
-              $("#sources").html($("#sources").html()+sources_html);
-              $("#citations").html($("#citations").html()+citations_html);
-              $("#source_revisions").html(revisions_html);
-              $(".revision_link_no_0").css("display", "inline");
-
-	      $('#submit_query').attr('disabled', false);
-	    }
-	  }, 'json')
-	});
-
-	// read info from user-selected solr endpoint
-	$('.solr_endpoints').change(function (e) {
-	  var ep_encoded = encodeURIComponent(this.value);
-	  $.get("count.php?ep=" + ep_encoded, function (data) {
-	    if (data.length > 0) {
-	      $("#sources").html($("#source_tpl").html());
-	      $("#citations").html($("#citation_tpl").html());
-              var sources_html = "";
-              var citations_html = "";
-              var revisions_html = "<div style='display:none;' class='revision_link revision_link_no_0'><a>#N/A</a></div>";
-	      for (var i=0; i<data.length; i++) {
-	        //$("#"+data[i].source+"_num").html(data[i].count);
-                sources_html += "<option value='"+data[i].source+"'> "+data[i].name+": "+data[i].count+"</option>";
-                citations_html += "<li>"+data[i].citation+"</li>";
-                revisions_html += "<div style='display:none;' class='revision_link revision_link_no_" + (i+1) + "'><a href='" + data[i].url + "'>" + data[i].version + "</a></div>";
-	      }
-              $("#sources").html($("#sources").html()+sources_html);
-              $("#citations").html($("#citations").html()+citations_html);
-	      $('#submit_query').attr('disabled', false);
-	    }
-	    else {
-	        $("#sources").html("no source");
-	        $("#citations").html($("#citation_tpl").html() + "<li>no citation</li>");
-	        $('#submit_query').attr('disabled', true);
-	    }
-	  }, 'json')
-
-          $('.revision_link').css('display', 'none');
-          $('.revision_link_no_0').css('display', 'inline');
-
-	});
-
-        $('#sources').change(function(e) {
-          var sid = e.target.selectedIndex;
-          $('.revision_link').css('display', 'none');
-          $('.revision_link_no_' + sid).css('display', 'inline');
-        });
-
-});
 </script>
 <footer class="footer">
   <div class="container">
