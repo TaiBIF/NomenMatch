@@ -136,6 +136,18 @@ foreach ($names as $nidx => $name) {
 	}
 	else{
 		$name_cleaned = canonical_form(trim(preg_replace('/^[\pZ\pC]+|[\pZ\pC]+$/u','',$name), " \t\r\n.,;|"), true);
+	
+		// kim: 尾端標記 → 保留屬名/科名，改走單名比對
+		// 涵蓋 sp. / spp. / indet. / sp. nov. / spec. nov. / gen. nov. / sp. n.
+		// 註：canonical_form 已把標點與編號正規化，nov/spec/gen 不在 sci_parts 故殘留在尾端
+		$on_markers = array('sp', 'spp', 'indet', 'nov', 'spec', 'gen');
+		$on_parts = explode(' ', $name_cleaned);
+		while (count($on_parts) > 1 && in_array(end($on_parts), $on_markers, true)) {
+			array_pop($on_parts);
+			$name_cleaned = implode(' ', $on_parts);
+		}
+		unset($on_parts);
+
 	}
 	
 	// 如果可用空白鍵拆成array，則維持以原先的演算法match
