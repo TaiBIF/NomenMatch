@@ -24,11 +24,11 @@ stag-down:
 	docker-compose -f staging.yml down
 
 prod-build:
-	docker-compose -f production-https.yml build
+	docker-compose -f production.yml build
 
 prod-up:
-	docker-compose -f production-https.yml up -d
+	docker-compose -f production.yml up -d
 
 prod-down:
-	docker-compose -f production-https.yml down
+	docker-compose -f production.yml down
 

@@ -5,27 +5,95 @@ services:
     container_name: nomenmatch-v2-solr
     build:
       context: ./compose/solr
-      #dockerfile: ./compose/solr/Dockerfile
     image: nomenmatch-v2-solr:8
     ports:
       - "8983:8983"
     volumes:
       - ./solr-data:/var/solr/data
+      - ./compose/solr:/compose/solr
     command:
       - solr-precreate
-      #- gettingstarted
+
   nginx:
     image: nginx:latest
     ports:
-        - "80:80"
+      - "80:80"
     volumes:
-        - ./:/code
-        - ./compose/nginx-production:/etc/nginx/conf.d
+      - ./:/code
+      - ./compose/nginx-production:/etc/nginx/conf.d
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.php.rule=Host(`match.taibif.tw`)"
+      - "traefik.http.routers.php.entrypoints=websecure"
+      - "traefik.http.routers.php.tls.certresolver=myresolver"
+
   php:
+    container_name: nomenmatch-php
     image: php:7-fpm
+    expose:
+      - 9000
     volumes:
-        - ./:/code
-        - ./source-data:/code/source-data
+      - ./:/code
+      - ./source-data:/code/source-data
+
+  updater:
+    container_name: nomenmatch-updater
+    build:
+      context: .
+      dockerfile: updater/Dockerfile
+    env_file:
+      - /home/ec2-user/.env
+    environment:
+      - DOCKER_HOST=tcp://dockerproxy:2375
+    volumes:
+      - ./:/code
+    networks:
+      - default
+      - dockerproxy
+    depends_on:
+      - dockerproxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.updater.rule=Host(`match.taibif.tw`) && PathPrefix(`/api/trigger-update`)"
+      - "traefik.http.routers.updater.entrypoints=websecure"
+      - "traefik.http.routers.updater.tls.certresolver=myresolver"
+      - "traefik.http.services.updater.loadbalancer.server.port=5000"
+      # ↓ 選用 IP allowlist:能固定來源 IP 再取消註解
+      # - "traefik.http.routers.updater.middlewares=updater-ipallow"
+      # - "traefik.http.middlewares.updater-ipallow.ipallowlist.sourcerange=YOUR.IP/32"
+
+  dockerproxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    container_name: nomenmatch-dockerproxy
+    environment:
+      - CONTAINERS=1
+      - EXEC=1
+      - POST=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - dockerproxy
+    restart: unless-stopped
+
+  traefik:
+    image: "traefik:v2.10"
+    container_name: "traefik"
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=catalogueoflife.taiwan@gmail.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "443:443"
+    volumes:
+      - "./letsencrypt:/letsencrypt"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+networks:
+  dockerproxy:
+    internal: true
 
 volumes:
   solr-data:
