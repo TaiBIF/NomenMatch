@@ -6,7 +6,6 @@ services:
       context: ./compose/solr
       #dockerfile: ./compose/solr/Dockerfile
     image: nomenmatch-solr:8
-    restart: always
     ports:
       - "8983:8983"
     volumes:

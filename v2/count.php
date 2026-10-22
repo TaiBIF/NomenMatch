@@ -5,7 +5,8 @@ require_once "./include/functions.php";
 $src_conf = read_src_conf();
 //echo "<pre>"; print_r($src_conf); echo "</pre>";
 //echo "-----------";
-$ep = (!empty($_REQUEST['ep']))?$_REQUEST['ep']:file_get_contents("./conf/solr_endpoint");
+// 一律使用設定檔的 Solr endpoint,不接受外部傳入的 ep(避免 SSRF)
+$ep = file_get_contents("./conf/solr_endpoint");
 
 $ep = trim($ep, " /\r\n");
 

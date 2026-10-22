@@ -7,7 +7,8 @@ services:
       context: ./compose/solr
     image: nomenmatch-v2-solr:8
     ports:
-      - "8983:8983"
+      # 只綁本機,外部無法直接連 Solr;php/updater 走 docker 內部網路(solr:8983)不受影響
+      - "127.0.0.1:8983:8983"
     volumes:
       - ./solr-data:/var/solr/data
       - ./compose/solr:/compose/solr
@@ -29,12 +30,13 @@ services:
 
   php:
     container_name: nomenmatch-php
-    image: php:7-fpm
+    image: php:8.4-fpm
     expose:
       - 9000
     volumes:
       - ./:/code
       - ./source-data:/code/source-data
+      - ./compose/php/prod.ini:/usr/local/etc/php/conf.d/prod.ini:ro
 
   updater:
     container_name: nomenmatch-updater

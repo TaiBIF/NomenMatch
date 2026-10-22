@@ -16,10 +16,11 @@ $names_str = implode("|",$names);
 
 require_once "./include/functions.php";
 
-if (@$_REQUEST['lang']) {
+// 只接受白名單內的語系,避免 lang 被拿來載入其他 .php 檔
+if (in_array(@$_REQUEST['lang'], array('zh'), true)) {
 	$gui_lang_file = "./conf/lang/error_codes.".$_REQUEST['lang'].".php";
 	if (file_exists($gui_lang_file)) {
-		require_once "./conf/lang/error_codes.".$_REQUEST['lang'].".php";
+		require_once $gui_lang_file;
 	}
 	else {
 		require_once "./conf/lang/error_codes.php";
@@ -82,7 +83,8 @@ if (!empty($_REQUEST['kingdom'])){
 
 
 
-$ep = (!empty($_REQUEST['ep']))?$_REQUEST['ep']:file_get_contents(dirname(realpath(__FILE__)).'/conf/solr_endpoint'); // endpoint
+// 一律使用設定檔的 Solr endpoint,不接受外部傳入的 ep(避免 SSRF)
+$ep = file_get_contents(dirname(realpath(__FILE__)).'/conf/solr_endpoint'); // endpoint
 $ep = trim($ep, " /\r\n");
 
 $res = array();
