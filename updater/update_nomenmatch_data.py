@@ -7,6 +7,10 @@
 #   3. 順序維持「先刪舊的同 namecode → 再匯入新的」(delete 與 import 同一組 namecode)
 #   4. get_deleted_taxon_ids 只認 api_taxon 本體刪除,避免誤刪(usage 刪除交給重新匯入反映)
 #   5. main 尾端再排除本次已重新匯入的 taxon,作為保險
+#   6. 2026-11 改用水位:每次處理「上次成功處理到的 updated_at」之後的所有 taxon,
+#      不再只抓最近一批(MAX(updated_at));某次觸發失敗或漏掉,下次會一起補上。
+#      水位檔 NOMENMATCH_WATERMARK_FILE(預設 ./v2/source-data/taicol_watermark.txt),
+#      全部成功才推進;沒有水位檔時沿用原本作法(只處理最近一批),成功後建立水位檔。
 
 import pymysql
 import pandas as pd
@@ -34,6 +38,8 @@ db_settings = {
 # 載入變體字典並預處理
 var_df = pd.read_csv('variants.csv')
 char_replacement_dict = dict(zip(var_df['B'], var_df['A']))
+
+WATERMARK_FILE = os.getenv('NOMENMATCH_WATERMARK_FILE', './v2/source-data/taicol_watermark.txt')
 
 SOLR_BATCH_SIZE = 100
 IMPORT_BATCH_SIZE = 50
@@ -96,29 +102,58 @@ def load_ranks():
             return dict(zip([r[0] for r in ranks], [eval(r[1])['en-us'] for r in ranks]))
 
 
-def get_updated_taxon_ids(cursor):
-    """取得最近一次更新批次的 taxon_ids"""
-    cursor.execute('''
-        WITH base_query AS (SELECT MAX(updated_at) AS updated_at FROM api_taxon)
+def read_watermark():
+    """上次成功處理到的 api_taxon.updated_at(字串,例 2026-11-03 02:00:05);沒有水位檔回 None"""
+    try:
+        with open(WATERMARK_FILE, encoding='utf-8') as f:
+            return f.read().strip() or None
+    except FileNotFoundError:
+        return None
+
+
+def write_watermark(value):
+    """全部成功後才呼叫;先寫暫存檔再取代,避免寫到一半留下壞檔"""
+    tmp = WATERMARK_FILE + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
+        f.write(str(value))
+    os.replace(tmp, WATERMARK_FILE)
+
+
+def get_update_range(cursor):
+    """本次要處理的範圍 (since, upto]:since 為水位(None = 沒有水位,只處理最近一批),
+    upto 為開始時的 MAX(updated_at),固定下來避免處理途中又有新的更新混進來"""
+    cursor.execute("SELECT MAX(updated_at) FROM api_taxon")
+    upto = cursor.fetchone()[0]
+    return read_watermark(), upto
+
+
+def _range_condition(column, since, upto):
+    if since is None:
+        return f"{column} = %s", (upto,)
+    return f"{column} > %s AND {column} <= %s", (since, upto)
+
+
+def get_updated_taxon_ids(cursor, since, upto):
+    """範圍內有更新的 taxon_ids(api_taxon 本體或其 usage 有更新)"""
+    cond_t, params_t = _range_condition('api_taxon.updated_at', since, upto)
+    cond_u, params_u = _range_condition('api_taxon_usages.updated_at', since, upto)
+    cursor.execute(f'''
         SELECT taxon_id FROM api_taxon
-        JOIN base_query ON base_query.updated_at = api_taxon.updated_at
-        WHERE api_taxon.is_deleted = 0
+        WHERE {cond_t} AND api_taxon.is_deleted = 0
         UNION ALL
         SELECT taxon_id FROM api_taxon_usages
-        JOIN base_query ON base_query.updated_at = api_taxon_usages.updated_at
-        WHERE api_taxon_usages.is_deleted = 0;
-    ''')
+        WHERE {cond_u} AND api_taxon_usages.is_deleted = 0;
+    ''', params_t + params_u)
     return list(set(t[0] for t in cursor.fetchall()))
 
 
-def get_deleted_taxon_ids(cursor):
-    """取得最近一次更新批次中本體已刪除的 taxon_ids"""
-    cursor.execute('''
-        WITH base_query AS (SELECT MAX(updated_at) AS updated_at FROM api_taxon)
+def get_deleted_taxon_ids(cursor, since, upto):
+    """範圍內本體已刪除的 taxon_ids"""
+    cond, params = _range_condition('api_taxon.updated_at', since, upto)
+    cursor.execute(f'''
         SELECT taxon_id FROM api_taxon
-        JOIN base_query ON base_query.updated_at = api_taxon.updated_at
-        WHERE api_taxon.is_deleted = 1;
-    ''')
+        WHERE {cond} AND api_taxon.is_deleted = 1;
+    ''', params)
     return list(set(t[0] for t in cursor.fetchall()))
 
 
@@ -340,16 +375,27 @@ def main():
 
     with get_database_connection() as conn:
         with conn.cursor() as cursor:
+            # 本次範圍:水位之後到目前的 MAX(updated_at)
+            since, upto = get_update_range(cursor)
+            if upto is None:
+                print("api_taxon 沒有資料,結束")
+                return
+            if since is not None and str(upto) <= since:
+                print(f"水位 {since} 之後沒有新的更新,結束")
+                return
+            print(f"處理範圍: {'(沒有水位,只處理最近一批) ' if since is None else since + ' 之後'}到 {upto}")
+
             # 取得需更新的 taxon_ids
-            updated_taxon_ids = get_updated_taxon_ids(cursor)
+            updated_taxon_ids = get_updated_taxon_ids(cursor, since, upto)
             print(f"需更新: {len(updated_taxon_ids)} 筆")
 
             # 無更新資料時,仍處理刪除後直接結束
             if not updated_taxon_ids:
-                deleted_taxon_ids = get_deleted_taxon_ids(cursor)
+                deleted_taxon_ids = get_deleted_taxon_ids(cursor, since, upto)
                 print(f"無更新資料,Solr 刪除 {len(deleted_taxon_ids)} 筆...")
                 solr_batch_delete(deleted_taxon_ids)
-                print(f"完成！共更新 0 筆,刪除 {len(deleted_taxon_ids)} 筆")
+                write_watermark(upto)
+                print(f"完成！共更新 0 筆,刪除 {len(deleted_taxon_ids)} 筆;水位推進到 {upto}")
                 return
 
             # 載入主要資料
@@ -406,7 +452,7 @@ def main():
     # 處理已刪除的 taxon
     with get_database_connection() as conn:
         with conn.cursor() as cursor:
-            deleted_taxon_ids = get_deleted_taxon_ids(cursor)
+            deleted_taxon_ids = get_deleted_taxon_ids(cursor, since, upto)
 
     # 排除本次已重新匯入的 taxon,避免有效 taxon 被誤刪(保險)
     deleted_taxon_ids = list(set(deleted_taxon_ids) - set(updated_taxon_ids))
@@ -416,7 +462,9 @@ def main():
 
     # 清除主 CSV
     os.remove(updating_csv)
-    print(f"完成！共更新 {len(df.namecode.unique())} 筆，刪除 {len(deleted_taxon_ids)} 筆")
+    # 全部成功才推進水位;中途失敗(raise)水位不動,下次從同一個位置重做
+    write_watermark(upto)
+    print(f"完成！共更新 {len(df.namecode.unique())} 筆，刪除 {len(deleted_taxon_ids)} 筆;水位推進到 {upto}")
 
 
 if __name__ == "__main__":
