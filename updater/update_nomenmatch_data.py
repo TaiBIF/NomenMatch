@@ -339,12 +339,11 @@ def solr_batch_import(df, today_str):
         batch_csv = f'./v2/source-data/source_taicol_{today_str}_{batch_num}.csv'
         df[df.namecode.isin(batch_codes)].to_csv(batch_csv, sep='\t', header=None, index=False)
 
-        # -T:無 TTY 環境(nohup/cron)也能執行; log 不覆寫,方便日後查
+        # 匯入程式的輸出(Submitting… 進度、curl 進度)不寫檔:subprocess 收下,失敗時才附在錯誤訊息裡
         commands = (
             f"docker exec nomenmatch-php bash -c "
-            f"'(cd /code/v2/workspace && php ./importChecklistToSolr.php "
-            f"../source-data/source_taicol_{today_str}_{batch_num}.csv taicol_2 "
-            f"&> /code/output_taicol_2_{batch_num})'"
+            f"'cd /code/v2/workspace && php ./importChecklistToSolr.php "
+            f"../source-data/source_taicol_{today_str}_{batch_num}.csv taicol_2'"
         )
         result = subprocess.run(commands, shell=True, capture_output=True, text=True)
         if result.returncode != 0:
@@ -352,7 +351,7 @@ def solr_batch_import(df, today_str):
             raise RuntimeError(
                 f"批次 {batch_num} import 失敗 (returncode={result.returncode})，"
                 f"該批舊資料已刪除但新資料未匯入,請檢查後重跑。"
-                f"stderr: {result.stderr[:500]}"
+                f"輸出: {(result.stderr or result.stdout)[-500:]}"
             )
 
         os.remove(batch_csv)
