@@ -60,6 +60,7 @@ services:
       - "traefik.http.routers.updater.entrypoints=websecure"
       - "traefik.http.routers.updater.tls.certresolver=myresolver"
       - "traefik.http.services.updater.loadbalancer.server.port=5000"
+      - "traefik.docker.network=nomenmatch_default"
       # ↓ 選用 IP allowlist:能固定來源 IP 再取消註解
       # - "traefik.http.routers.updater.middlewares=updater-ipallow"
       # - "traefik.http.middlewares.updater-ipallow.ipallowlist.sourcerange=YOUR.IP/32"
