@@ -170,7 +170,7 @@ while ($vals = fgetcsv($fp, 0, "\t" )) {
 	//}
 	// $rec['common_name_c'] = explode(",", $vals[5]);  
 	$rec['common_name_c'] = $vals[5];
-	$rec['alternative_name_c'] = explode(",", $vals[15]);  
+	$rec['alternative_name_c'] = explode(",", $vals[15] ?? '');
 
 	$rec['sound_name'] = treat_word($rec['canonical_name']);
 
