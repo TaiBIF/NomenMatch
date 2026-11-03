@@ -56,6 +56,7 @@ function canonical_form($string, $subgen_skip=false, $sp_keep=false){
         $words = preg_split("/[[:space:]]+/",trim($string));//以空白字元切割學名串
 
         $num = count($words);
+        $words += [1 => '', 2 => ''];
         /**
          * 學名首字($words[0])字首須大寫,
          * 針對特殊狀況用以下條件過濾出乾淨的首字($words[0]),若無此情形則跳過
