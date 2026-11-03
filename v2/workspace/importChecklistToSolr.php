@@ -51,9 +51,18 @@ function submitJson($dat, $tmp_path="./tmp/save_storage.json") {
 		}
 
 		file_put_contents($json_path, $json);
-		$jf = "curl '" . $ep . "/update/json?commit=true' --data-binary @".$json_path." -H 'Content-type:application/json'";
-		$response = exec($jf, $out);
-//		var_dump($out);
+		// -sS：不印進度，但錯誤照印；Solr 回錯誤（或 curl 失敗）時以結束碼 1 結束，
+		// 呼叫端（updater/update_nomenmatch_data.py）才知道這批沒有匯入成功、不推進水位
+		$jf = "curl -sS '" . $ep . "/update/json?commit=true' --data-binary @".$json_path." -H 'Content-type:application/json' 2>&1";
+		$out = array();
+		exec($jf, $out, $ret);
+		$resp = implode("\n", $out);
+		$parsed = json_decode($resp, true);
+		$status = isset($parsed['responseHeader']['status']) ? $parsed['responseHeader']['status'] : null;
+		if ($ret !== 0 || $status !== 0) {
+			fwrite(STDERR, "Solr 匯入失敗（{$numString}）：curl 結束碼 {$ret}，回應：" . substr($resp, 0, 500) . "\n");
+			exit(1);
+		}
 		$total+=count($dat);
 	}
 }
